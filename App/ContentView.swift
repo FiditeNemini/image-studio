@@ -1452,6 +1452,20 @@ struct ContentView: View {
     private func generate(count: Int = 1, scenarioPrompts: [String]? = nil) {
         NSApp.keyWindow?.makeFirstResponder(nil)
 
+        // Several prompts pasted into the field, split by `---` lines, queue one job
+        // each — the same one-job-per-prompt shape as a scenario batch.
+        if scenarioPrompts == nil, let field = batchablePromptField() {
+            let prompts = PromptBatchSplitter.split(field)
+            if prompts.count > 1 {
+                if params.modelFamily == .flux {
+                    settings.lastPrompt = field
+                }
+                settings.recordPromptUse(field)
+                generate(count: prompts.count, scenarioPrompts: prompts)
+                return
+            }
+        }
+
         // Remember the custom checkpoint and the family it loads as, so the
         // selection is intact on relaunch. Each family branch below sets
         // `lastModel`; these two are what make `.custom` mean something again.
@@ -1813,6 +1827,17 @@ struct ContentView: View {
     /// press reads the live family and params.
     private func queueScenarioBatch(_ prompts: [String]) {
         generate(count: prompts.count, scenarioPrompts: prompts)
+    }
+
+    /// The active family's prompt field, for ``PromptBatchSplitter``. Nil for
+    /// Ideogram 4, whose caption is a structured document with no per-prompt path.
+    private func batchablePromptField() -> String? {
+        switch params.modelFamily {
+        case .flux: params.prompt
+        case .krea2: krea2Params.prompt
+        case .zimage: zimageParams.prompt
+        case .ideogram4, .seedvr2: nil
+        }
     }
 
     /// Collapses any {a|b} groups a scenario prompt happens to contain down to one

@@ -64,6 +64,7 @@
 		496D74D402C4B89472069404 /* LoraLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = F611B70C3A587B09B5890AE0 /* LoraLibrary.swift */; };
 		499C6F5744EC44732A518B5D /* OpenAIChat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20929E59AB251C273A8C9999 /* OpenAIChat.swift */; };
 		49BF0B410A6E1BD8CC6F2566 /* ImageDropTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 138ECB7E18FDB462914EEDFE /* ImageDropTarget.swift */; };
+		49ED9650D0932FEB5B8EBB14 /* PromptBatchSplitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C1675CADC482D3435550C71 /* PromptBatchSplitter.swift */; };
 		4C4DEBC9788F57D3627E47CC /* ThumbnailCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84AE08701FD2D1A4EDA2DFB5 /* ThumbnailCache.swift */; };
 		4D8B913A094AAFE181207AB2 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A31CFEFF049480510A99BB2F /* SettingsView.swift */; };
 		4FD42F907391F75AC15E4CA3 /* CompletedImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BE742047832D58C8A2B4E46 /* CompletedImageView.swift */; };
@@ -84,6 +85,7 @@
 		65E93BDC06E71759215E9C61 /* Ideogram4Job.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E769B611A03FA4372F553CA /* Ideogram4Job.swift */; };
 		6619EBBB32F00CABCF2BC509 /* scenario_prompt.md in Resources */ = {isa = PBXBuildFile; fileRef = FE1832089B5311712FEF1286 /* scenario_prompt.md */; };
 		66343C5D9463A03976D60C07 /* InsetTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AADB0159980B7D99BDE55C34 /* InsetTextEditor.swift */; };
+		6729FCCF7E160269D567C1F3 /* PromptBatchSplitterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 431C403A29EFDB5D3336D11F /* PromptBatchSplitterTests.swift */; };
 		672F81EFC0F5D7D6548681FD /* BackendModelStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEC2D794A469B7E39DD3A709 /* BackendModelStore.swift */; };
 		67E20D03F48F76817A738C86 /* ModelDefaultsView+Forms.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318C96A132452AB2AC3F26D5 /* ModelDefaultsView+Forms.swift */; };
 		6B4A7C4FEE6A46B30749A080 /* OutputDirectoryPromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 141CB0282F7313611083C575 /* OutputDirectoryPromptView.swift */; };
@@ -214,6 +216,7 @@
 		3F82D2B38FB37FC37847BB07 /* FluxJobRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxJobRunner.swift; sourceTree = "<group>"; };
 		3FF15C1E147BEBBF910FCDEB /* BBoxKeyCatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BBoxKeyCatcher.swift; sourceTree = "<group>"; };
 		41C451A131125F4F21A38D20 /* BBoxGeometryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BBoxGeometryTests.swift; sourceTree = "<group>"; };
+		431C403A29EFDB5D3336D11F /* PromptBatchSplitterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptBatchSplitterTests.swift; sourceTree = "<group>"; };
 		4420F429A61B2BD0284305E8 /* ModelDefaultsView+Ideogram4Form.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelDefaultsView+Ideogram4Form.swift"; sourceTree = "<group>"; };
 		45EB6A26F997E4EB0AF2B374 /* GemmaChatRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GemmaChatRunner.swift; sourceTree = "<group>"; };
 		46B7CBD4EEFB60781826D6E3 /* LoraLibraryEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraLibraryEditorView.swift; sourceTree = "<group>"; };
@@ -240,6 +243,7 @@
 		654AC3A3DC3E6FAE9A129B80 /* ColorPaletteEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorPaletteEditor.swift; sourceTree = "<group>"; };
 		655AC8400B9B30688813DF1A /* RunnerSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerSupport.swift; sourceTree = "<group>"; };
 		6BE742047832D58C8A2B4E46 /* CompletedImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletedImageView.swift; sourceTree = "<group>"; };
+		6C1675CADC482D3435550C71 /* PromptBatchSplitter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptBatchSplitter.swift; sourceTree = "<group>"; };
 		6C5A00F53C846D0792D55029 /* ModelDefaultsView+Krea2Form.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelDefaultsView+Krea2Form.swift"; sourceTree = "<group>"; };
 		6CB12782BB6D8B424591F3DE /* GalleryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryStore.swift; sourceTree = "<group>"; };
 		6CD54E0519CA91161F18FF31 /* BatchMenuButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchMenuButton.swift; sourceTree = "<group>"; };
@@ -353,6 +357,7 @@
 				529C1CDA0E09FB681D68CA6E /* MetadataSidecar.swift */,
 				014853D76AFC31CB2CC63B45 /* MfluxInstaller.swift */,
 				985F3C0FD2619F10E9F451D5 /* OpenAIChatClient.swift */,
+				6C1675CADC482D3435550C71 /* PromptBatchSplitter.swift */,
 				9DE82B7F1C42F9508BF95185 /* ScenarioGenerator.swift */,
 				84AE08701FD2D1A4EDA2DFB5 /* ThumbnailCache.swift */,
 				EF1A8D4AFA49B16B96016982 /* UpdateChecker.swift */,
@@ -413,6 +418,7 @@
 				5E9882E2488E7CDE2179ECBE /* LoraBaseModelHeuristicTests.swift */,
 				C921C6EC83B36F702B982D48 /* MfluxInstallerTests.swift */,
 				C90C6D1E633010C5A77C0DBE /* OpenAIChatClientTests.swift */,
+				431C403A29EFDB5D3336D11F /* PromptBatchSplitterTests.swift */,
 				2F6325B3C3F37C272F06328B /* RunnerSupportTests.swift */,
 				1748E64B34608DBEDF0A6DAA /* ScenarioBatchQueueTests.swift */,
 				2B35B01141A73113FEFB7B60 /* ScenarioGeneratorTests.swift */,
@@ -870,6 +876,7 @@
 				1C3461DA31C785854CF04C3E /* PidDecode.swift in Sources */,
 				B07EA41ABCC4E6848B15B36D /* PidDecodeToggleView.swift in Sources */,
 				2C2107249D1FC87AFF119DAC /* PreviewPaneView.swift in Sources */,
+				49ED9650D0932FEB5B8EBB14 /* PromptBatchSplitter.swift in Sources */,
 				333970340121D49FD8E0298C /* PromptHistory.swift in Sources */,
 				C43B03BB2FA61D5548DC5BB7 /* PromptHistoryPickerView.swift in Sources */,
 				15C9FB8C83845AA4C5806F9A /* PromptLLMSettingsView.swift in Sources */,
@@ -920,6 +927,7 @@
 				24636A27FCA3C0A9B76AE57D /* LoraBaseModelHeuristicTests.swift in Sources */,
 				F25C2722C97A6A8CA4EC5729 /* MfluxInstallerTests.swift in Sources */,
 				5D1F115D51D6DA55F3B1EF10 /* OpenAIChatClientTests.swift in Sources */,
+				6729FCCF7E160269D567C1F3 /* PromptBatchSplitterTests.swift in Sources */,
 				0D07E483A86332FC85422E90 /* RunnerSupportTests.swift in Sources */,
 				45A5BAA44F5602C038720620 /* ScenarioBatchQueueTests.swift in Sources */,
 				59160C7CE171391D5D9CAECA /* ScenarioGeneratorTests.swift in Sources */,
