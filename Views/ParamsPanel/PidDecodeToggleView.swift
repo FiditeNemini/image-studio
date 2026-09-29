@@ -48,6 +48,7 @@ struct PidDecodeToggleView: View {
     @Binding var pidDegradeSigma: Double
     let width: Int
     let height: Int
+    let family: ModelFamily
 
     @Environment(AppSettings.self) private var settings
 
@@ -60,6 +61,11 @@ struct PidDecodeToggleView: View {
         BinaryDetector.supportsPidDecode(in: settings.mfluxBinaryDir)
     }
 
+    /// PiD decodes mflux latents; a ComfyUI-routed family never produces one here.
+    private var isRoutedToComfyUI: Bool {
+        settings.comfyBackendEnabled[family.id] == true
+    }
+
     private var isBelowRecommended: Bool {
         width * height < PidDecode.recommendedMinPixels
     }
@@ -70,7 +76,15 @@ struct PidDecodeToggleView: View {
     }
 
     var body: some View {
-        if isSupported {
+        if isRoutedToComfyUI {
+            // The ComfyUI path ignores the flag, but the sidecar would still record a PiD
+            // decode that never happened — so a hidden toggle must not stay on. This
+            // zero-size view exists only until that write lands.
+            if pidDecode {
+                Color.clear.frame(width: 0, height: 0)
+                    .onAppear { pidDecode = false }
+            }
+        } else if isSupported {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(alignment: .center, spacing: 6) {
                     Toggle("Enable PiD", isOn: $pidDecode)

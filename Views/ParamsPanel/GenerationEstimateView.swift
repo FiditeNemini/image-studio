@@ -5,17 +5,30 @@ import SwiftUI
 /// stays hidden until there is comparable history for the current
 /// model/quantize/size, and appends "(rough)" when the requested pixel count is
 /// outside the sampled range (extrapolated); the megapixel readout is always shown.
+///
+/// With `onSetMegapixels` set (the aspect ratio is locked), the readout becomes an
+/// editable field: typing a megapixel count resizes to that area at the locked ratio.
 struct GenerationEstimateView: View {
     let estimate: TimingStore.Estimate?
     let width: Int
     let height: Int
+    var onSetMegapixels: ((Double) -> Void)?
+
+    // Buffered like DimensionSliderRow: committed on Return or focus-out, so the
+    // resize never fires mid-keystroke.
+    @State private var megapixelInput: String = ""
+    @FocusState private var megapixelFocused: Bool
 
     private var megapixels: Double {
         Double(width * height) / 1_000_000
     }
 
+    private var megapixelNumber: String {
+        String(format: megapixels < 1 ? "%.2f" : "%.1f", megapixels)
+    }
+
     private var megapixelText: String {
-        String(format: megapixels < 1 ? "%.2f MP" : "%.1f MP", megapixels)
+        "\(megapixelNumber) MP"
     }
 
     var body: some View {
@@ -29,11 +42,50 @@ struct GenerationEstimateView: View {
                         : "Estimated from previous runs at a similar pixel count.")
             }
             Spacer(minLength: 8)
-            Text(megapixelText)
-                .monospacedDigit()
-                .help("\(width) × \(height) = \(megapixelText) total pixels.")
+            if onSetMegapixels != nil {
+                megapixelField
+            } else {
+                Text(megapixelText)
+                    .monospacedDigit()
+                    .help("\(width) × \(height) = \(megapixelText) total pixels.")
+            }
         }
         .font(.caption2)
         .foregroundStyle(.secondary)
+    }
+
+    private var megapixelField: some View {
+        HStack(spacing: 3) {
+            TextField("", text: $megapixelInput)
+                .textFieldStyle(.roundedBorder)
+                .font(.system(.caption2, design: .monospaced))
+                .multilineTextAlignment(.trailing)
+                .frame(width: 44)
+                .focused($megapixelFocused)
+                .onSubmit(commitMegapixels)
+                .onChange(of: megapixelFocused) { _, isFocused in
+                    if !isFocused {
+                        commitMegapixels()
+                    }
+                }
+                .onChange(of: megapixelNumber) { _, new in
+                    if !megapixelFocused {
+                        megapixelInput = new
+                    }
+                }
+                .onAppear { megapixelInput = megapixelNumber }
+                .accessibilityLabel("Megapixels")
+                .accessibilityHint("Type a total size in megapixels; width and height follow at the locked aspect ratio")
+            Text("MP")
+        }
+        .help("\(width) × \(height). Type a megapixel count to resize at the locked aspect ratio.")
+    }
+
+    /// Unparseable or non-positive input reverts to the live value.
+    private func commitMegapixels() {
+        if let value = Double(megapixelInput.replacingOccurrences(of: ",", with: ".")), value > 0 {
+            onSetMegapixels?(value)
+        }
+        megapixelInput = megapixelNumber
     }
 }

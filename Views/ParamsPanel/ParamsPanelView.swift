@@ -164,12 +164,12 @@ struct ParamsPanelView: View {
                 DimensionPickerView(
                     width: $params.width,
                     height: $params.height,
-                    constraints: params.model.isFlux ? .flux2 : .legacy
+                    constraints: params.model.isFlux ? .flux2 : .legacy,
+                    estimate: fluxEstimate
                 )
-                GenerationEstimateView(estimate: fluxEstimate, width: params.width, height: params.height)
                 PidDecodeToggleView(
                     pidDecode: $params.pidDecode, pidDegradeSigma: $params.pidDegradeSigma,
-                    width: params.width, height: params.height
+                    width: params.width, height: params.height, family: .flux
                 )
             }
         }

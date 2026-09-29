@@ -86,6 +86,7 @@ struct DimensionPickerView: View {
     @Binding var height: Int
 
     let constraints: DimensionConstraints
+    let estimate: TimingStore.Estimate?
 
     @Environment(AppSettings.self) private var settings
 
@@ -124,10 +125,18 @@ struct DimensionPickerView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            headerRow
-            DimensionSliderRow(label: "Width", value: widthBinding, range: constraints.range, step: constraints.step)
-            DimensionSliderRow(label: "Height", value: heightBinding, range: constraints.range, step: constraints.step)
+        VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 10) {
+                headerRow
+                DimensionSliderRow(label: "Width", value: widthBinding, range: constraints.range, step: constraints.step)
+                DimensionSliderRow(label: "Height", value: heightBinding, range: constraints.range, step: constraints.step)
+            }
+            // Lives here rather than beside the picker because the megapixel field
+            // needs the aspect lock, which is this view's own state.
+            GenerationEstimateView(
+                estimate: estimate, width: width, height: height,
+                onSetMegapixels: megapixelSetter
+            )
         }
         .onChange(of: width) { _, w in resyncAspect(w: w, h: height) }
         .onChange(of: height) { _, h in resyncAspect(w: width, h: h) }
@@ -261,10 +270,14 @@ struct DimensionPickerView: View {
         )
     }
 
-    init(width: Binding<Int>, height: Binding<Int>, constraints: DimensionConstraints = .legacy) {
+    init(
+        width: Binding<Int>, height: Binding<Int>,
+        constraints: DimensionConstraints = .legacy, estimate: TimingStore.Estimate?
+    ) {
         _width = width
         _height = height
         self.constraints = constraints
+        self.estimate = estimate
         let asp = AspectPreset.detect(w: width.wrappedValue, h: height.wrappedValue)
         _selectedAspect = State(initialValue: asp == .free ? .w16h9 : asp)
         _aspectLocked = State(initialValue: asp != .free)
@@ -341,6 +354,21 @@ struct DimensionPickerView: View {
         if let (w, h) = presetDimensions(for: selectedAspect) {
             applyDimensions(width: w, height: h, preserveRatio: true)
         }
+    }
+
+    /// Editing the megapixel count needs a ratio to hold, so it is only offered while locked.
+    private var megapixelSetter: ((Double) -> Void)? {
+        guard aspectLocked else { return nil }
+        return { setMegapixels($0) }
+    }
+
+    /// Resizes to `megapixels` at the locked ratio. Only reachable while locked, so
+    /// the ratio is always a preset's.
+    private func setMegapixels(_ megapixels: Double) {
+        guard let ratio = effectiveRatio else { return }
+        halfRes = false
+        let (w, h) = constraints.dimensions(ratio: ratio, megapixels: megapixels)
+        applyDimensions(width: w, height: h, preserveRatio: true)
     }
 
     // MARK: - Math helpers

@@ -101,11 +101,12 @@ struct ZImageParamsPanelView: View {
 
         SectionContainerView(title: nil, info: nil) {
             VStack(alignment: .leading, spacing: 6) {
-                DimensionPickerView(width: $params.width, height: $params.height, constraints: .zimage)
-                GenerationEstimateView(estimate: estimate, width: params.width, height: params.height)
+                DimensionPickerView(
+                    width: $params.width, height: $params.height, constraints: .zimage, estimate: estimate
+                )
                 PidDecodeToggleView(
                     pidDecode: $params.pidDecode, pidDegradeSigma: $params.pidDegradeSigma,
-                    width: params.width, height: params.height
+                    width: params.width, height: params.height, family: .zimage
                 )
             }
         }

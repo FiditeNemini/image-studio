@@ -51,18 +51,17 @@ struct Ideogram4ParamsPanelView: View {
             // Dimensions
             SectionContainerView(title: "Dimensions", info: "Output image size. Range: 256–2048, multiples of 16.") {
                 VStack(alignment: .leading, spacing: 6) {
-                    DimensionPickerView(width: $params.width, height: $params.height)
+                    DimensionPickerView(width: $params.width, height: $params.height, estimate: estimate)
                         .onChange(of: params.width) { _, w in
                             params.width = Ideogram4Preset.clampDimension(w)
                         }
                         .onChange(of: params.height) { _, h in
                             params.height = Ideogram4Preset.clampDimension(h)
                         }
-                    GenerationEstimateView(estimate: estimate, width: params.width, height: params.height)
                     PidDecodeToggleView(
                         pidDecode: $params.pidDecode,
                         pidDegradeSigma: $params.pidDegradeSigma,
-                        width: params.width, height: params.height
+                        width: params.width, height: params.height, family: .ideogram4
                     )
                 }
             }
