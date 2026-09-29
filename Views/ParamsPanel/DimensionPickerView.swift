@@ -100,6 +100,12 @@ struct DimensionPickerView: View {
         return selectedAspect.ratio
     }
 
+    /// Editing the megapixel count needs a ratio to hold, so it is only offered while locked.
+    private var megapixelSetter: ((Double) -> Void)? {
+        guard aspectLocked else { return nil }
+        return { setMegapixels($0) }
+    }
+
     /// The area the preset buttons currently aim for, in megapixels.
     private var targetMegapixels: Double {
         halfRes ? settings.rapidTargetMegapixels : settings.targetMegapixels
@@ -354,12 +360,6 @@ struct DimensionPickerView: View {
         if let (w, h) = presetDimensions(for: selectedAspect) {
             applyDimensions(width: w, height: h, preserveRatio: true)
         }
-    }
-
-    /// Editing the megapixel count needs a ratio to hold, so it is only offered while locked.
-    private var megapixelSetter: ((Double) -> Void)? {
-        guard aspectLocked else { return nil }
-        return { setMegapixels($0) }
     }
 
     /// Resizes to `megapixels` at the locked ratio. Only reachable while locked, so
