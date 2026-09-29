@@ -13,8 +13,20 @@ is generated and your changes will be overwritten.
 
 ```bash
 xcodegen generate                       # after any project.yml change
-swiftlint lint --config .swiftlint.yml  # run before building
 ```
+
+**Before every commit, run CI's lint gate exactly** — both must pass:
+
+```bash
+swiftformat --lint --config .swiftformat .
+swiftlint lint --config .swiftlint.yml --baseline .swiftlint-baseline.json --strict
+```
+
+A plain `swiftlint lint` is not enough: it reports new violations as warnings
+among ~139 baselined ones, so they are easy to miss, and CI fails on them under
+`--strict`. `type_contents_order` is the usual catch — a property added below
+`init` or methods. Run both before building, too: the pre-build SwiftFormat pass
+rewrites files and would hide what `--lint` catches.
 
 If `~/MLXBits.xcworkspace` exists (the multi-Studio workspace: Image Studio,
 Video Studio, LTX Dataset Studio), you **must** build through it — never
