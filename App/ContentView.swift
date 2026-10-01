@@ -1555,29 +1555,43 @@ struct ContentView: View {
             settings.recordPromptUse(krea2Params.prompt)
         }
         let wasIdle = !isAnyStoreRunning
-        let variants = min(WildcardExpander.variantCount(krea2Params.prompt), 10)
+        let directive = AspectDirective.extract(from: krea2Params.prompt)
+        let size = AspectDirective.size(ratio: directive.ratio, width: krea2Params.width, height: krea2Params.height, constraints: .krea2)
+        let variants = min(WildcardExpander.variantCount(directive.prompt), 10)
         let jobs: [Krea2Job]
         if let scenarioPrompts, !scenarioPrompts.isEmpty {
             jobs = scenarioPrompts.map {
-                krea2Params.makeJob(
+                let directive = AspectDirective.extract(from: $0)
+                return krea2Params.makeJob(
                     count: 1,
                     customModelRepo: params.effectiveCustomRepo,
-                    resolvedPrompt: collapseWildcards(($0, krea2Params.negativePrompt))
+                    resolvedPrompt: collapseWildcards((directive.prompt, krea2Params.negativePrompt)),
+                    size: AspectDirective.size(
+                        ratio: directive.ratio, width: krea2Params.width, height: krea2Params.height, constraints: .krea2
+                    )
                 )
             }
         } else if variants > 1 {
             let jobCount = count > 1 ? count : variants
-            let positives = WildcardExpander.expandVariants(krea2Params.prompt, count: jobCount)
+            let positives = WildcardExpander.expandVariants(directive.prompt, count: jobCount)
             let negatives = WildcardExpander.expandVariants(krea2Params.negativePrompt, count: jobCount)
             jobs = (0 ..< jobCount).map {
                 krea2Params.makeJob(
                     count: 1,
                     customModelRepo: params.effectiveCustomRepo,
-                    resolvedPrompt: (positives[$0], negatives[$0])
+                    resolvedPrompt: (positives[$0], negatives[$0]),
+                    size: size
                 )
             }
         } else {
-            jobs = [krea2Params.makeJob(count: count, customModelRepo: params.effectiveCustomRepo)]
+            jobs = [
+                krea2Params.makeJob(
+                    count: count,
+                    customModelRepo: params.effectiveCustomRepo,
+                    resolvedPrompt: collapseWildcards((directive.prompt, krea2Params.negativePrompt)),
+                    size: size
+                ),
+            ]
         }
         for job in jobs {
             krea2Store.add(job)
@@ -1602,29 +1616,45 @@ struct ContentView: View {
             settings.recordPromptUse(zimageParams.prompt)
         }
         let wasIdle = !isAnyStoreRunning
-        let variants = min(WildcardExpander.variantCount(zimageParams.prompt), 10)
+        let directive = AspectDirective.extract(from: zimageParams.prompt)
+        let size = AspectDirective.size(
+            ratio: directive.ratio, width: zimageParams.width, height: zimageParams.height, constraints: .zimage
+        )
+        let variants = min(WildcardExpander.variantCount(directive.prompt), 10)
         let jobs: [ZImageJob]
         if let scenarioPrompts, !scenarioPrompts.isEmpty {
             jobs = scenarioPrompts.map {
-                zimageParams.makeJob(
+                let directive = AspectDirective.extract(from: $0)
+                return zimageParams.makeJob(
                     count: 1,
                     customModelRepo: params.effectiveCustomRepo,
-                    resolvedPrompt: collapseWildcards(($0, zimageParams.negativePrompt))
+                    resolvedPrompt: collapseWildcards((directive.prompt, zimageParams.negativePrompt)),
+                    size: AspectDirective.size(
+                        ratio: directive.ratio, width: zimageParams.width, height: zimageParams.height, constraints: .zimage
+                    )
                 )
             }
         } else if variants > 1 {
             let jobCount = count > 1 ? count : variants
-            let positives = WildcardExpander.expandVariants(zimageParams.prompt, count: jobCount)
+            let positives = WildcardExpander.expandVariants(directive.prompt, count: jobCount)
             let negatives = WildcardExpander.expandVariants(zimageParams.negativePrompt, count: jobCount)
             jobs = (0 ..< jobCount).map {
                 zimageParams.makeJob(
                     count: 1,
                     customModelRepo: params.effectiveCustomRepo,
-                    resolvedPrompt: (positives[$0], negatives[$0])
+                    resolvedPrompt: (positives[$0], negatives[$0]),
+                    size: size
                 )
             }
         } else {
-            jobs = [zimageParams.makeJob(count: count, customModelRepo: params.effectiveCustomRepo)]
+            jobs = [
+                zimageParams.makeJob(
+                    count: count,
+                    customModelRepo: params.effectiveCustomRepo,
+                    resolvedPrompt: collapseWildcards((directive.prompt, zimageParams.negativePrompt)),
+                    size: size
+                ),
+            ]
         }
         for job in jobs {
             zimageStore.add(job)
@@ -1799,26 +1829,31 @@ struct ContentView: View {
     /// A scenario batch takes the same one-job-per-prompt shape, but the prompts
     /// come from the LLM instead of the wildcard expander.
     private func fluxJobs(count: Int, scenarioPrompts: [String]? = nil) -> [FluxJob] {
+        let constraints: DimensionConstraints = params.model.isFlux ? .flux2 : .legacy
         if let scenarioPrompts, !scenarioPrompts.isEmpty {
             return scenarioPrompts.map {
-                params.makeJob(
+                let directive = AspectDirective.extract(from: $0)
+                return params.makeJob(
                     count: 1,
                     resolvedPrompt: collapseWildcards(
-                        params.templatedPrompts(templates: settings.activeTemplates, overriding: $0)
-                    )
+                        params.templatedPrompts(templates: settings.activeTemplates, overriding: directive.prompt)
+                    ),
+                    size: AspectDirective.size(ratio: directive.ratio, width: params.width, height: params.height, constraints: constraints)
                 )
             }
         }
-        let templated = params.templatedPrompts(templates: settings.activeTemplates)
+        let directive = AspectDirective.extract(from: params.prompt)
+        let size = AspectDirective.size(ratio: directive.ratio, width: params.width, height: params.height, constraints: constraints)
+        let templated = params.templatedPrompts(templates: settings.activeTemplates, overriding: directive.prompt)
         let variants = min(WildcardExpander.variantCount(templated.positive), 10)
         guard variants > 1 else {
-            return [params.makeJob(count: count, templates: settings.activeTemplates)]
+            return [params.makeJob(count: count, resolvedPrompt: collapseWildcards(templated), size: size)]
         }
         let jobCount = count > 1 ? count : variants
         let positives = WildcardExpander.expandVariants(templated.positive, count: jobCount)
         let negatives = WildcardExpander.expandVariants(templated.negative, count: jobCount)
         return (0 ..< jobCount).map {
-            params.makeJob(count: 1, resolvedPrompt: (positives[$0], negatives[$0]))
+            params.makeJob(count: 1, resolvedPrompt: (positives[$0], negatives[$0]), size: size)
         }
     }
 

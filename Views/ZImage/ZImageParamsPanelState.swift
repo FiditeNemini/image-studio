@@ -183,10 +183,12 @@ final class ZImageParamsPanelState {
     /// wildcard batches; when nil, any wildcards collapse to a single sample.
     /// `customModelRepo` carries the picker's `Custom…` entry when a custom
     /// checkpoint is being loaded through the Z-Image pipeline; empty otherwise.
+    /// `size` overrides the panel's width and height for this job only.
     func makeJob(
         count: Int = 1,
         customModelRepo: String = "",
-        resolvedPrompt: (positive: String, negative: String)? = nil
+        resolvedPrompt: (positive: String, negative: String)? = nil,
+        size: (width: Int, height: Int)? = nil
     ) -> ZImageJob {
         let finalPrompt = resolvedPrompt?.positive
             ?? WildcardExpander.expandVariants(prompt, count: 1).first ?? prompt
@@ -197,8 +199,8 @@ final class ZImageParamsPanelState {
             customModelRepo: customModelRepo,
             prompt: finalPrompt,
             negativePrompt: finalNegative,
-            width: width,
-            height: height,
+            width: size?.width ?? width,
+            height: size?.height ?? height,
             seed: seed,
             steps: steps,
             guidance: guidance,

@@ -152,10 +152,12 @@ final class ParamsPanelState {
     /// Builds a job. `resolvedPrompt` supplies fully-resolved prompt text
     /// (templates + wildcards already applied) for wildcard batches; when nil,
     /// templates are applied and any wildcards collapse to a single sample.
+    /// `size` overrides the panel's width and height for this job only.
     func makeJob(
         count: Int = 1,
         templates: [PromptTemplate] = [],
-        resolvedPrompt: (positive: String, negative: String)? = nil
+        resolvedPrompt: (positive: String, negative: String)? = nil,
+        size: (width: Int, height: Int)? = nil
     ) -> FluxJob {
         let seeds: [Int] = count > 1
             ? (0 ..< count).map { _ in Int(UInt32.random(in: 0 ..< UInt32.max)) }
@@ -176,8 +178,8 @@ final class ParamsPanelState {
             customBaseModel: customBaseModel,
             prompt: finalPrompt,
             negativePrompt: finalNegative,
-            width: width,
-            height: height,
+            width: size?.width ?? width,
+            height: size?.height ?? height,
             seed: seed,
             seeds: seeds,
             steps: steps,
