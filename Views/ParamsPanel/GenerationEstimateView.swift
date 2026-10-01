@@ -68,11 +68,8 @@ struct GenerationEstimateView: View {
                         commitMegapixels()
                     }
                 }
-                .onChange(of: megapixelNumber) { _, new in
-                    if !megapixelFocused {
-                        megapixelInput = new
-                    }
-                }
+                // Unconditional: Enter keeps focus, and the resized width × height only arrives after commit returns.
+                .onChange(of: megapixelNumber) { _, new in megapixelInput = new }
                 .onAppear { megapixelInput = megapixelNumber }
                 .accessibilityLabel("Megapixels")
                 .accessibilityHint("Type a total size in megapixels; width and height follow at the locked aspect ratio")
@@ -81,8 +78,10 @@ struct GenerationEstimateView: View {
         .help("\(width) × \(height). Type a megapixel count to resize at the locked aspect ratio.")
     }
 
-    /// Unparseable or non-positive input reverts to the live value.
+    /// Unparseable or non-positive input reverts to the live value. An unedited field is a no-op, so blurring
+    /// it does not snap a slider-set size (2.04 MP shown as "2.0") to the rounded figure.
     private func commitMegapixels() {
+        guard megapixelInput != megapixelNumber else { return }
         if let value = Double(megapixelInput.replacingOccurrences(of: ",", with: ".")), value > 0 {
             onSetMegapixels?(value)
         }
