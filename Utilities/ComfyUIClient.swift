@@ -308,7 +308,7 @@ final class ComfyUIClient {
         var weightDtype: String = "default"
         var loras: [ComfyLora] = []
         var sampler: String = "euler"
-        var scheduler: String = "normal"
+        var scheduler: String = "simple" // matches mflux's Krea2 spacing; "normal" wastes its last step (0.001→0) on flow models
         /// Server-side output subfolder for the SaveImage node, appended as a path component to the `mlxbits` filename prefix. Must be
         /// non-empty (e.g. `"krea2"` → prefix `mlxbits/krea2`) or ComfyUI's `get_save_image_path` computes an empty dirname and drops the
         /// file in the output ROOT. Single level only — a second slash does not nest.
