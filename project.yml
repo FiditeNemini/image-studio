@@ -107,6 +107,14 @@ targets:
             echo "warning: SwiftLint not installed — run: brew install swiftlint"
           fi
         basedOnDependencyAnalysis: false
+    # Runs after resources are copied and before Xcode signs the app, so the
+    # runtime is sealed into the app's signature. No-op unless
+    # BUNDLE_PYTHON_RUNTIME=YES.
+    postBuildScripts:
+      - name: Embed Python runtime
+        script: |
+          "${SRCROOT}/scripts/embed-python-runtime.sh"
+        basedOnDependencyAnalysis: false
     settings:
       base:
         PRODUCT_NAME: "MLXBits Image Studio"

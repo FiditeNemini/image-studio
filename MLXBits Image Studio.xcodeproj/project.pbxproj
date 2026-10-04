@@ -767,6 +767,7 @@
 				837DAB49D3E6174E37F3DCF8 /* SwiftLint */,
 				7180A44B4EABA08AA5126CD2 /* Sources */,
 				D55F446F21DA424762BAF739 /* Resources */,
+				B97651D5E0B99056C891A32F /* Embed Python runtime */,
 			);
 			buildRules = (
 			);
@@ -868,6 +869,25 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "SWIFTFORMAT=/opt/homebrew/bin/swiftformat\nif [ -f \"$SWIFTFORMAT\" ]; then\n  \"$SWIFTFORMAT\" --config \"${SRCROOT}/.swiftformat\" \"${SRCROOT}\"\nelse\n  echo \"warning: SwiftFormat not installed — run: brew install swiftformat\"\nfi\n";
+		};
+		B97651D5E0B99056C891A32F /* Embed Python runtime */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Embed Python runtime";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/scripts/embed-python-runtime.sh\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
