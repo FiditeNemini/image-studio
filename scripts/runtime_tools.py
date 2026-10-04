@@ -12,6 +12,9 @@
     runtime_tools.py manifest <prefix> <lock> <out> --overrides FILE [--python-version V]
         Write runtime-manifest.json: Python version, lock hash, package versions and licenses.
 
+    runtime_tools.py macho <dir>
+        Print "exe<TAB>path" or "lib<TAB>path" for every Mach-O file under <dir>.
+
 Stdlib only. The runtime build runs this with the bundled interpreter; the unit
 tests run it with any python3 >= 3.10.
 """
@@ -23,6 +26,7 @@ import hashlib
 import json
 import platform
 import re
+import struct
 import sys
 from dataclasses import dataclass
 from email.parser import BytesParser
@@ -149,6 +153,46 @@ def manifest(prefix: Path, lock: Path, python_version: str, overrides: dict[str,
     }
 
 
+MH_MAGIC_64 = b"\xcf\xfa\xed\xfe"
+FAT_MAGIC = b"\xca\xfe\xba\xbe"
+FAT_MAGIC_64 = b"\xca\xfe\xba\xbf"
+MH_EXECUTE = 2
+
+
+def macho_kind(path: Path) -> str | None:
+    with path.open("rb") as fh:
+        head = fh.read(32)
+        if len(head) < 16:
+            return None
+        if head[:4] == MH_MAGIC_64:
+            filetype = struct.unpack_from("<I", head, 12)[0]
+        elif head[:4] in (FAT_MAGIC, FAT_MAGIC_64):
+            count = struct.unpack_from(">I", head, 4)[0]
+            if not 0 < count < 20:  # Java class files share 0xCAFEBABE; their "count" is a version >= 45
+                return None
+            offset_fmt = ">I" if head[:4] == FAT_MAGIC else ">Q"
+            offset = struct.unpack_from(offset_fmt, head, 8 + 8)[0]  # first fat_arch: cputype, cpusubtype, offset
+            fh.seek(offset)
+            sub = fh.read(16)
+            if len(sub) < 16 or sub[:4] != MH_MAGIC_64:
+                return None
+            filetype = struct.unpack_from("<I", sub, 12)[0]
+        else:
+            return None
+    return "exe" if filetype == MH_EXECUTE else "lib"
+
+
+def macho_files(root: Path) -> list[tuple[str, Path]]:
+    found = []
+    for path in sorted(root.rglob("*")):
+        if path.is_symlink() or not path.is_file():
+            continue
+        kind = macho_kind(path)
+        if kind:
+            found.append((kind, path))
+    return found
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -165,6 +209,8 @@ def main(argv: list[str]) -> int:
     for p in (p_ack, p_manifest):
         p.add_argument("--overrides", type=Path, required=True)
         p.add_argument("--python-version", default=platform.python_version())
+    p_macho = sub.add_parser("macho")
+    p_macho.add_argument("root", type=Path)
     args = parser.parse_args(argv)
 
     if args.command == "guard":
@@ -178,6 +224,10 @@ def main(argv: list[str]) -> int:
     if args.command == "manifest":
         data = manifest(args.prefix, args.lock, args.python_version, load_overrides(args.overrides))
         args.out.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")
+        return 0
+    if args.command == "macho":
+        for kind, path in macho_files(args.root):
+            print(f"{kind}\t{path}")
         return 0
     return 2
 

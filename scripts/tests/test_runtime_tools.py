@@ -183,5 +183,56 @@ class ManifestTests(unittest.TestCase):
             self.assertEqual(json.loads(out.read_text())["packages"]["alpha"]["version"], "1.0")
 
 
+import struct  # noqa: E402
+
+MH_MAGIC_64 = b"\xcf\xfa\xed\xfe"
+
+
+def thin(filetype: int) -> bytes:
+    # magic, cputype (ARM64), cpusubtype, filetype, then padding
+    return MH_MAGIC_64 + struct.pack("<iiI", 0x0100000C, 0, filetype) + b"\0" * 16
+
+
+def fat(filetype: int) -> bytes:
+    header = struct.pack(">II", 0xCAFEBABE, 1) + struct.pack(">iiIII", 0x0100000C, 0, 4096, 32, 12)
+    return header + b"\0" * (4096 - len(header)) + thin(filetype)
+
+
+class MachOTests(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name) / "dir with space"
+        (self.root / "bin").mkdir(parents=True)
+        (self.root / "bin/python3.14").write_bytes(thin(2))       # MH_EXECUTE
+        (self.root / "libpython3.14.dylib").write_bytes(thin(6))  # MH_DYLIB
+        (self.root / "_ext.cpython-314-darwin.so").write_bytes(thin(8))  # MH_BUNDLE
+        (self.root / "universal_tool").write_bytes(fat(2))
+        (self.root / "Klass.class").write_bytes(struct.pack(">II", 0xCAFEBABE, 0x34) + b"\0" * 32)
+        (self.root / "notes.txt").write_text("hello")
+        (self.root / "tiny").write_bytes(MH_MAGIC_64)
+        (self.root / "link.dylib").symlink_to(self.root / "libpython3.14.dylib")
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_kinds(self):
+        self.assertEqual(rt.macho_kind(self.root / "bin/python3.14"), "exe")
+        self.assertEqual(rt.macho_kind(self.root / "libpython3.14.dylib"), "lib")
+        self.assertEqual(rt.macho_kind(self.root / "_ext.cpython-314-darwin.so"), "lib")
+        self.assertEqual(rt.macho_kind(self.root / "universal_tool"), "exe")
+        self.assertIsNone(rt.macho_kind(self.root / "Klass.class"))
+        self.assertIsNone(rt.macho_kind(self.root / "notes.txt"))
+        self.assertIsNone(rt.macho_kind(self.root / "tiny"))
+
+    def test_cli_lists_each_real_file_once(self):
+        out = subprocess.run([sys.executable, str(TOOLS), "macho", str(self.root)],
+                             capture_output=True, text=True, check=True).stdout
+        rows = sorted(line.split("\t") for line in out.splitlines())
+        self.assertEqual([(kind, Path(p).name) for kind, p in rows], [
+            ("exe", "python3.14"), ("exe", "universal_tool"),
+            ("lib", "_ext.cpython-314-darwin.so"), ("lib", "libpython3.14.dylib"),
+        ])
+
+
 if __name__ == "__main__":
     unittest.main()
