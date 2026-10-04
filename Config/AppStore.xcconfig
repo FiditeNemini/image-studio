@@ -1,0 +1,6 @@
+// App Store configurations (Debug-AppStore, Release-AppStore).
+//
+// Signing needs your Apple Developer Team ID, which this repo keeps out of
+// version control: copy Config/Local.xcconfig.example to Config/Local.xcconfig
+// and fill it in. CI passes DEVELOPMENT_TEAM on the xcodebuild command line.
+#include? "Local.xcconfig"

@@ -42,4 +42,5 @@ Carthage/Build/
 
 # Local secrets (Team ID, credentials) — never commit
 .env
+Config/Local.xcconfig
 __pycache__/

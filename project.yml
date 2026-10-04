@@ -7,6 +7,18 @@ options:
   createIntermediateGroups: true
   generateEmptyDirectories: true
 
+# Debug/Release build the DMG app; the -AppStore pair builds the sandboxed App
+# Store app from the same sources (docs/specs/2026-10-03-app-store-build-design.md).
+configs:
+  Debug: debug
+  Release: release
+  Debug-AppStore: debug
+  Release-AppStore: release
+
+configFiles:
+  Debug-AppStore: Config/AppStore.xcconfig
+  Release-AppStore: Config/AppStore.xcconfig
+
 settings:
   base:
     SWIFT_VERSION: "5.9"
@@ -33,7 +45,9 @@ targets:
     # Explicit source dirs only — `path: .` swept build artifacts, tooling
     # configs (.swiftlint.yml/.periphery.yml/.jscpd.json), reports, logs, and
     # the built .app/.dmg into the app bundle (dotfile-blind `*.yml` excludes).
-    # Info.plist + entitlements are wired via the `info:`/`entitlements:` keys.
+    # Info.plist is wired via the `info:` key. Entitlements are plain tracked files
+    # chosen per configuration with CODE_SIGN_ENTITLEMENTS below: XcodeGen's
+    # `entitlements:` key would override the App Store configurations' choice.
     sources:
       - App
       - Models
@@ -59,7 +73,7 @@ targets:
       path: Resources/Info.plist
       properties:
         CFBundleName: MLXBits Image Studio
-        CFBundleIdentifier: com.mlxbits.image-studio
+        CFBundleIdentifier: "$(PRODUCT_BUNDLE_IDENTIFIER)"
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         LSMinimumSystemVersion: "26.0"
@@ -74,12 +88,6 @@ targets:
         # use the IP, a bare hostname, or a `.local` name.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
-    entitlements:
-      path: Resources/MLXBits_Image_Studio.entitlements
-      properties:
-        com.apple.security.app-sandbox: false
-        com.apple.security.files.user-selected.read-write: true
-        com.apple.security.network.client: true
     preBuildScripts:
       - name: SwiftFormat
         script: |
@@ -104,6 +112,30 @@ targets:
         PRODUCT_NAME: "MLXBits Image Studio"
         PRODUCT_BUNDLE_IDENTIFIER: com.mlxbits.image-studio
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_ENTITLEMENTS: Resources/MLXBits_Image_Studio.entitlements
+        # Read by scripts/embed-python-runtime.sh. The DMG configurations switch
+        # BUNDLE_PYTHON_RUNTIME on when the app starts using the runtime.
+        BUNDLE_PYTHON_RUNTIME: NO
+        PYTHON_RUNTIME_SANDBOXED: NO
+      configs:
+        Debug-AppStore:
+          PRODUCT_BUNDLE_IDENTIFIER: com.mlxbits.image-studio.appstore
+          CODE_SIGN_ENTITLEMENTS: Resources/MLXBits_Image_Studio_AppStore.entitlements
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) APP_STORE"
+          BUNDLE_PYTHON_RUNTIME: YES
+          PYTHON_RUNTIME_SANDBOXED: YES
+          # A stable identity: ad-hoc signatures change every build, which
+          # invalidates security-scoped bookmarks. Team from Config/Local.xcconfig.
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: Apple Development
+        Release-AppStore:
+          PRODUCT_BUNDLE_IDENTIFIER: com.mlxbits.image-studio.appstore
+          CODE_SIGN_ENTITLEMENTS: Resources/MLXBits_Image_Studio_AppStore.entitlements
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) APP_STORE"
+          BUNDLE_PYTHON_RUNTIME: YES
+          PYTHON_RUNTIME_SANDBOXED: YES
+          CODE_SIGN_STYLE: Manual
+          CODE_SIGN_IDENTITY: Apple Distribution
 
   MLXBits Image StudioTests:
     type: bundle.unit-test
