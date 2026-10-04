@@ -13,6 +13,8 @@ is generated and your changes will be overwritten.
 
 ```bash
 xcodegen generate                       # after any project.yml change
+scripts/build-python-runtime.sh          # bundled Python runtime → build/python-runtime/ (cached)
+python3 -m unittest discover -s scripts/tests   # runtime build-script tests
 ```
 
 **Before every commit, run CI's lint gate exactly** — both must pass:
@@ -104,6 +106,7 @@ Gitignored but present on disk, and expensive to grep:
 - `.jscpd-report/` — duplication-checker HTML
 - `*.xcodeproj/` — generated from `project.yml`; read the manifest instead
 - `docs/screenshots/` — binary PNGs
+- `build/python-runtime/` — the bundled Python runtime (~1.6 GB)
 
 ## Architecture in one paragraph
 

@@ -137,6 +137,24 @@ open "MLXBits Image Studio.xcodeproj"
 
 > **Signing:** Set `DEVELOPMENT_TEAM` in `project.yml` to your 10-character Apple Developer Team ID before building a signed Release. Debug builds are unsigned and work without a Team ID.
 
+### Python runtime and the App Store flavor
+
+The App Store build bundles its own Python with mflux and every dependency,
+pinned in `Runtime/`. `scripts/build-python-runtime.sh` builds it into
+`build/python-runtime/` (it needs `uv`: `brew install uv`), and the
+"Embed Python runtime" build phase runs it automatically when needed.
+
+To build the App Store flavor locally, copy `Config/Local.xcconfig.example` to
+`Config/Local.xcconfig` and set your Team ID, then build the
+**MLXBits Image Studio (App Store)** scheme. It runs sandboxed in its own
+container (`~/Library/Containers/com.mlxbits.image-studio.appstore`), so it
+never touches the DMG app's data.
+
+To change a Python package version, edit `Runtime/requirements.in` and run
+`scripts/lock-python-runtime.sh`. The runtime build refuses GPL-family
+packages; a package without license metadata must be checked by hand and
+recorded in `Runtime/license-overrides.json`.
+
 ---
 
 ## Cutting a release

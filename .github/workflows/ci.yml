@@ -81,6 +81,7 @@ jobs:
             -destination "platform=macOS" \
             -resultBundlePath build/TestResults.xcresult \
             CODE_SIGNING_ALLOWED=NO \
+            BUNDLE_PYTHON_RUNTIME=NO \
             | tee build/xcodebuild.log
 
       # The analyzer_rules block in .swiftlint.yml (unused_import) does NOT run
@@ -109,6 +110,30 @@ jobs:
           name: test-results
           path: build/TestResults.xcresult
           retention-days: 7
+
+  appstore-build:
+    name: App Store build (compile only)
+    # Compiles the APP_STORE code paths so a broken #if fails the PR. No
+    # signing (runners carry no identity) and no Python runtime (runtime.yml
+    # builds and checks it when its inputs change).
+    needs: lint
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install SwiftLint
+        run: brew install --quiet swiftlint
+
+      - name: Build (Debug-AppStore)
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project "$PROJECT" \
+            -scheme "MLXBits Image Studio (App Store)" \
+            -configuration Debug-AppStore \
+            -destination "platform=macOS" \
+            CODE_SIGNING_ALLOWED=NO \
+            BUNDLE_PYTHON_RUNTIME=NO
 
   duplication:
     name: Duplication
