@@ -45,6 +45,14 @@ if [ ! -f "$STAGE/.complete" ]; then
 fi
 
 DEST="$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/python"
+# The phase's declared output (project.yml). Xcode doesn't see files this script
+# changes, so without it Xcode skips re-signing the app after the runtime
+# changes and the app's seal goes stale. Rewritten only when rsync changed
+# something, so unchanged builds don't re-sign the whole app.
+STAMP="$DEST/.embed-stamp"
 mkdir -p "$DEST"
-rsync -a --delete "$STAGE/python/" "$DEST/"
+CHANGES=$(rsync -a --delete --exclude=.embed-stamp --itemize-changes "$STAGE/python/" "$DEST/")
+if [ -n "$CHANGES" ] || [ ! -f "$STAMP" ]; then
+  basename "$STAGE" >"$STAMP"
+fi
 echo "Python runtime embedded ($KEY, $FLAVOR, ${IDENTITY:-unsigned})"

@@ -115,6 +115,9 @@ targets:
         script: |
           "${SRCROOT}/scripts/embed-python-runtime.sh"
         basedOnDependencyAnalysis: false
+        # Lets Xcode's code-signing step notice when the runtime changed.
+        outputFiles:
+          - $(TARGET_BUILD_DIR)/$(UNLOCALIZED_RESOURCES_FOLDER_PATH)/python/.embed-stamp
     settings:
       base:
         PRODUCT_NAME: "MLXBits Image Studio"
