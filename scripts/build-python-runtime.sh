@@ -28,7 +28,13 @@ if [ -f "$OUT/cache-key" ] && [ "$(cat "$OUT/cache-key")" = "$KEY" ] && [ -x "$P
   exit 0
 fi
 
-command -v uv >/dev/null || { echo "error: uv is required to build the Python runtime (brew install uv)" >&2; exit 1; }
+# Xcode.app launched from the Dock runs build phases with a bare PATH, so look
+# where uv is usually installed too (Homebrew, uv's own installer).
+PATH="$PATH:/opt/homebrew/bin:/usr/local/bin:$HOME/.local/bin"
+command -v uv >/dev/null || {
+  echo "error: uv is required to build the Python runtime (brew install uv); looked in PATH=$PATH" >&2
+  exit 1
+}
 
 echo "Building Python runtime ($KEY)"
 rm -rf "$OUT"
