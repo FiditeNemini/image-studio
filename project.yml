@@ -160,3 +160,17 @@ schemes:
       gatherCoverageData: true
     run:
       config: Debug
+  # The App Store flavor. Choosing this scheme is choosing the flavor; tests
+  # run under the main scheme only.
+  MLXBits Image Studio (App Store):
+    build:
+      targets:
+        MLXBits Image Studio: all
+    run:
+      config: Debug-AppStore
+    analyze:
+      config: Debug-AppStore
+    profile:
+      config: Release-AppStore
+    archive:
+      config: Release-AppStore
