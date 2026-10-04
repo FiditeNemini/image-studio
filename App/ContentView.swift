@@ -39,6 +39,7 @@ struct ContentView: View {
     private static let galleryWidthStep: CGFloat = 16
 
     @Environment(AppSettings.self) private var settings
+    @Environment(ProfileStore.self) private var profiles
     @Environment(JobStore.self) private var store
     @Environment(FluxJobRunner.self) private var runner
     @Environment(GalleryStore.self) private var gallery
@@ -63,6 +64,8 @@ struct ContentView: View {
     @State private var selectedGalleryItem: GalleryItem?
     @State private var showingQueue: Bool = false
     @State private var showingNotepad: Bool = false
+    /// New / Rename / Remove, as picked from the toolbar's profile menu.
+    @State private var profileAction: ProfileAction?
     @State private var showingOutputDirPrompt: Bool = false
     /// Set when the user picks "Upscale…" on an image — presents the SeedVR2 sheet.
     @State private var upscaleTarget: UpscaleTarget?
@@ -306,6 +309,7 @@ struct ContentView: View {
             .sheet(isPresented: $showingOutputDirPrompt) {
                 OutputDirectoryPromptView(isPresented: $showingOutputDirPrompt)
                     .environment(settings)
+                    .environment(profiles)
             }
             .sheet(item: $boxOverlay) { ctx in
                 boxOverlaySheet(ctx)
@@ -357,11 +361,9 @@ struct ContentView: View {
                 krea2Params.loras = updated.filter { $0.modelFamily == .krea2 }
                 zimageParams.loras = updated.filter { $0.modelFamily == .zimage }
             }
-            .onChange(of: showingOutputDirPrompt) { _, showing in
-                if !showing, !settings.outputDir.isEmpty {
-                    gallery.scan(outputDir: settings.outputDir)
-                }
-            }
+            // A profile switch tears this view down while the outgoing profile
+            // is still active, so the unsaved form drafts are kept with it.
+            .onDisappear { saveContentDrafts() }
     }
 
     var body: some View {
@@ -494,6 +496,7 @@ struct ContentView: View {
                 VStack(spacing: 0) {
                     topControlBar
                     mfluxInstallBanner
+                    MissingLibraryBanner()
                 }
             }
 
@@ -546,6 +549,7 @@ struct ContentView: View {
             NotepadView()
                 .environment(settings)
         }
+        .modifier(ProfileActionPresenter(action: $profileAction))
         .onChange(of: runner.activeJob?.id) { _, id in
             guard let id, let job = store.jobs.first(where: { $0.id == id }) else { return }
             selectedGalleryItem = nil
@@ -656,6 +660,13 @@ struct ContentView: View {
             Button { openSettings() } label: {
                 Label("Settings", systemImage: "gear")
             }
+        }
+
+        ToolbarItem(placement: .primaryAction) {
+            ProfileMenu(
+                onAction: { profileAction = $0 },
+                onShowQueue: { showingQueue = true }
+            )
         }
     }
 
@@ -1445,6 +1456,14 @@ struct ContentView: View {
     }
 
     // MARK: - Generate
+    /// Keeps the prompts typed but not yet generated with the current profile.
+    /// Generating saves these too; this covers leaving the profile first.
+    private func saveContentDrafts() {
+        settings.lastPrompt = params.prompt
+        settings.lastLoras = params.loras
+        settings.lastKrea2 = krea2Params.snapshot()
+        settings.lastZImage = zimageParams.snapshot()
+    }
 
     /// One Generate press. `scenarioPrompts`, when supplied, is a batch of prompts
     /// independently rolled by the scenario generator — each becomes its own job,
