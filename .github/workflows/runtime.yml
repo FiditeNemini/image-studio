@@ -1,0 +1,63 @@
+name: Runtime
+
+# Builds the Python runtime bundled into the app whenever its inputs change:
+# runs the build-script unit tests, then resolves and installs the locked
+# packages, runs the license guard, and smoke-tests every tool the app runs.
+# Separate from ci.yml because it downloads ~1 GB and only matters when the
+# runtime's inputs change.
+on:
+  pull_request:
+    paths:
+      - "Runtime/**"
+      - "scripts/build-python-runtime.sh"
+      - "scripts/runtime_tools.py"
+      - "scripts/tests/**"
+      - "Resources/run_tool.py"
+      - ".github/workflows/runtime.yml"
+  push:
+    branches: [main]
+    paths:
+      - "Runtime/**"
+      - "scripts/build-python-runtime.sh"
+      - "scripts/runtime_tools.py"
+      - "scripts/tests/**"
+      - "Resources/run_tool.py"
+      - ".github/workflows/runtime.yml"
+
+concurrency:
+  group: runtime-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  runtime:
+    name: Build & check runtime
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10
+
+      - name: Unit tests (runtime scripts)
+        run: python3 -m unittest discover -s scripts/tests -v
+
+      # Same inputs as the script's own cache key, so a hit means this exact
+      # runtime already passed the guard and smoke test.
+      - name: Restore runtime
+        uses: actions/cache@v6
+        with:
+          path: build/python-runtime
+          key: python-runtime-${{ hashFiles('Runtime/**', 'scripts/build-python-runtime.sh', 'scripts/runtime_tools.py', 'Resources/run_tool.py') }}
+
+      - name: Build runtime (license guard + smoke test)
+        run: scripts/build-python-runtime.sh
+
+      - name: Report
+        run: |
+          {
+            echo "### Python runtime"
+            echo "Size: $(du -sh build/python-runtime/python | cut -f1)"
+            echo "Packages: $(python3 -c 'import json; print(len(json.load(open("build/python-runtime/python/runtime-manifest.json"))["packages"]))')"
+          } >> "$GITHUB_STEP_SUMMARY"
