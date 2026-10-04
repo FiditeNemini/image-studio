@@ -39,6 +39,7 @@
 		1F26CDAACBDAC72CD1F21C44 /* DimensionConstraints.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4ED4622A2079F5ED9546458 /* DimensionConstraints.swift */; };
 		1F93BC153012C85DB80B983C /* Ideogram4JobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = E083E8B6FB269CF2517A093C /* Ideogram4JobRunner.swift */; };
 		24636A27FCA3C0A9B76AE57D /* LoraBaseModelHeuristicTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9882E2488E7CDE2179ECBE /* LoraBaseModelHeuristicTests.swift */; };
+		2471B94524D33EBA00254C01 /* run_tool.py in Resources */ = {isa = PBXBuildFile; fileRef = D49F253E7F154C0A4D4D3FBE /* run_tool.py */; };
 		28A278E311B31F4464A171CC /* LogTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB287891C14528C187C1AC45 /* LogTextView.swift */; };
 		2B1DBF0BA62DC080B51D9BF8 /* BBoxGeometryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41C451A131125F4F21A38D20 /* BBoxGeometryTests.swift */; };
 		2C0FA92FCF531F12169659A1 /* ZImagePreviewViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D42B1614835EBFF337B14199 /* ZImagePreviewViews.swift */; };
@@ -358,6 +359,7 @@
 		CDEE759E1BCCC5C90FFF5675 /* ComfySeedVR2WorkflowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComfySeedVR2WorkflowTests.swift; sourceTree = "<group>"; };
 		D07C86B92053779C5988498B /* JobRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobRunner.swift; sourceTree = "<group>"; };
 		D42B1614835EBFF337B14199 /* ZImagePreviewViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZImagePreviewViews.swift; sourceTree = "<group>"; };
+		D49F253E7F154C0A4D4D3FBE /* run_tool.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = run_tool.py; sourceTree = "<group>"; };
 		D51EBA77E02C1913782FF6B2 /* ScenarioGeneratorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioGeneratorView.swift; sourceTree = "<group>"; };
 		D776D62562D137DBCD692E19 /* ImageMetadataPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageMetadataPanel.swift; sourceTree = "<group>"; };
 		D8158844AE746F9CE0CBED40 /* SectionContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionContainerView.swift; sourceTree = "<group>"; };
@@ -568,6 +570,7 @@
 				C8E7E429B7E1355569571155 /* ideogram_caption_prompt.md */,
 				6EAF1C67E02A6EFACEB795A8 /* krea2_scenario_prompt_example.md */,
 				729F046BC0201746ADC15A2C /* mflux_driver.py */,
+				D49F253E7F154C0A4D4D3FBE /* run_tool.py */,
 				79628AB5261A09BED858E668 /* scenario_llm_driver.py */,
 				FE1832089B5311712FEF1286 /* scenario_prompt.md */,
 			);
@@ -812,6 +815,7 @@
 				5A84D23E49ADE5A737D442E7 /* ideogram_caption_prompt.md in Resources */,
 				FA8C9AA718CA49C3BBB57095 /* krea2_scenario_prompt_example.md in Resources */,
 				84A3C53B8CDD7E7DE9A6E9B2 /* mflux_driver.py in Resources */,
+				2471B94524D33EBA00254C01 /* run_tool.py in Resources */,
 				AE03750D6C07C31792F17ABA /* scenario_llm_driver.py in Resources */,
 				6619EBBB32F00CABCF2BC509 /* scenario_prompt.md in Resources */,
 			);

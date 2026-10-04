@@ -49,6 +49,8 @@ targets:
         buildPhase: resources
       - path: Resources/mflux_driver.py
         buildPhase: resources
+      - path: Resources/run_tool.py
+        buildPhase: resources
       - path: Resources/scenario_prompt.md
         buildPhase: resources
       - path: Resources/scenario_llm_driver.py
