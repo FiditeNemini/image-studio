@@ -38,7 +38,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: astral-sh/setup-uv@v10
+      - uses: astral-sh/setup-uv@v10.2.0  # setup-uv publishes no floating major tag
 
       - name: Unit tests (runtime scripts)
         run: python3 -m unittest discover -s scripts/tests -v
