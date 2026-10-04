@@ -1,7 +1,7 @@
 # App Store build — design
 
 **Date:** 2026-10-03
-**Status:** Approved in discussion; awaiting review of this written version.
+**Status:** Approved 2026-10-04.
 
 ## Goal
 
@@ -24,6 +24,7 @@ Both flavors have the same features. The App Store build is the same code with a
 | Tips (App Store) | Three consumable in-app purchases ($2.99 / $4.99 / $9.99). They unlock nothing. |
 | Support (DMG) | Ko-fi (`ko-fi.com/mlxbits`) now. A GitHub Sponsors button stays hidden until GitHub approves the MLXBits profile. |
 | Placement | App menu item, Settings section, and one nudge after 50 images that is shown once and never again. |
+| Version | Not a 1.0. The first release carrying this work (the DMG on the bundled runtime, milestone 4) is **v0.16.0**. Later milestones ship as normal minor or patch releases. |
 | License | MIT (done in #11). |
 | Age rating | Expect the highest tier (18+). Draw Things, a comparable app, is rated 18+. |
 
