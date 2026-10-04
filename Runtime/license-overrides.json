@@ -1,4 +1,10 @@
 {
-  "_comment": "Packages whose metadata carries no license. Verify against the project's repo before adding one.",
-  "hf-transfer": "Apache-2.0"
+  "_comment": "Licenses verified by hand. A package is listed when its metadata carries no license, or when the guard flags GPL wording that a human checked and cleared. Keys starting with _ are notes. Verify against the project's repo before adding one.",
+  "hf-transfer": "Apache-2.0",
+  "_matplotlib": "Bundles FreeType, dual-licensed 'FTL OR GPL-2.0-or-later'; used under the FreeType License (its credit notice is in Acknowledgements.txt).",
+  "matplotlib": "PSF-2.0",
+  "_pandas": "The guard matches the 'GPL-compatible?' column of the PSF license-history table in its License field; pandas itself is BSD-3-Clause.",
+  "pandas": "BSD-3-Clause",
+  "_scipy": "Bundles libgfortran, libquadmath and libgcc_s under GPL-3.0-or-later WITH GCC-exception-3.1. The GCC Runtime Library Exception permits shipping them with non-GPL software (as every scipy wheel does); their license text is in Acknowledgements.txt. Only mlx-audio (via mlx-vlm) needs scipy.",
+  "scipy": "BSD-3-Clause"
 }

@@ -33,9 +33,21 @@ from email.parser import BytesParser
 from email.policy import compat32
 from pathlib import Path
 
-COPYLEFT = re.compile(r"\b(A?GPL|LGPL)\b|GNU (AFFERO |LESSER |LIBRARY )?GENERAL PUBLIC", re.IGNORECASE)
-# FFmpeg's libraries and the x264/x265 encoders. libavif (AV1 images, BSD) is fine.
-FORBIDDEN_BINARY = re.compile(r"^lib(av(codec|format|util|device|filter)|sw(scale|resample)|postproc|x264|x265)\b")
+# Any GPL-family spelling: GPL, GPLv3+, GPL2, AGPLv3, LGPLv2+, "GNU General Public
+# License", "General Public License v3". "GPL-compatible" (a permissive license
+# describing itself) is not a match.
+COPYLEFT = re.compile(
+    r"\b[AL]?GPL(?:v?\d[\d.+]*)?\b(?![-\s]*compatible)"
+    r"|GNU (?:AFFERO |LESSER |LIBRARY )?GENERAL PUBLIC"
+    r"|\bGeneral Public License\b",
+    re.IGNORECASE,
+)
+# FFmpeg's libraries and the x264/x265 encoders, plus standalone ffmpeg/ffprobe
+# executables (imageio-ffmpeg ships one built with x264). libavif (BSD) is fine.
+FORBIDDEN_BINARY = re.compile(
+    r"^(?:lib(?:av(?:codec|format|util|device|filter)|sw(?:scale|resample)|postproc|x264|x265)\b"
+    r"|ff(?:mpeg|probe)\b)"
+)
 # A License field longer than this is license *text*, not a license name.
 MAX_LICENSE_NAME = 80
 
@@ -46,6 +58,9 @@ class PackageLicense:
     version: str
     license: str  # best-effort license name; "" when the metadata has none
     dist_info: Path
+    # Every license-bearing metadata value (expression, each License classifier,
+    # the whole License field); the guard checks all of them, not just `license`.
+    texts: tuple[str, ...] = ()
 
 
 def normalize(name: str) -> str:
@@ -75,17 +90,24 @@ def read_licenses(site: Path) -> list[PackageLicense]:
         first_line = free_text.splitlines()[0].strip() if free_text else ""
         best = (field("License-Expression") or "; ".join(classifiers)
                 or (first_line if len(first_line) <= MAX_LICENSE_NAME else ""))
-        packages.append(PackageLicense(field("Name"), field("Version"), best, meta.parent))
+        texts = tuple(t for t in [field("License-Expression"), free_text,
+                                  *(str(c) for c in msg.get_all("Classifier") or [] if str(c).startswith("License ::"))]
+                      if t)
+        packages.append(PackageLicense(field("Name"), field("Version"), best, meta.parent, texts))
     return packages
 
 
 def classify(pkg: PackageLicense, overrides: dict[str, str]) -> tuple[str, str]:
-    license_name = overrides.get(normalize(pkg.name), pkg.license)
-    if not license_name:
+    override = overrides.get(normalize(pkg.name))
+    if override is not None:  # verified by hand; replaces everything the metadata says
+        return ("copyleft" if COPYLEFT.search(override) else "ok"), override
+    for text in pkg.texts:
+        match = COPYLEFT.search(text)
+        if match:
+            return "copyleft", pkg.license if COPYLEFT.search(pkg.license) else match.group(0)
+    if not pkg.license:
         return "unknown", ""
-    if COPYLEFT.search(license_name):
-        return "copyleft", license_name
-    return "ok", license_name
+    return "ok", pkg.license
 
 
 def forbidden_binaries(root: Path) -> list[Path]:

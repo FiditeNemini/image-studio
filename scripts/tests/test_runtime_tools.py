@@ -94,6 +94,40 @@ class LicenseClassificationTests(unittest.TestCase):
         add_package(self.prefix, "intlpkg", expression="MIT", license_field="Licença MIT — © Ünïcode")
         self.assertEqual(self.verdict()[0], "ok")
 
+    # Spellings and metadata layouts found by the final review: each one slipped
+    # past a guard that matched only "GPL"/"LGPL" as whole words in one field.
+    def test_versioned_gpl_spellings_are_copyleft(self):
+        for i, text in enumerate(("GPLv3+", "GPL2", "AGPLv3", "LGPLv2+", "GNU General Public License v3")):
+            add_package(self.prefix, f"pkg{i}", license_field=text)
+        verdicts = {p.name: rt.classify(p, {})[0] for p in rt.read_licenses(rt.site_packages(self.prefix))}
+        self.assertEqual(set(verdicts.values()), {"copyleft"}, verdicts)
+
+    def test_gpl_notice_after_a_copyright_line_is_copyleft(self):
+        notice = ("Copyright (C) 2020 Somebody\n        This program is free software: you can redistribute it"
+                  " and/or modify it under the terms of the GNU General Public License as published by the"
+                  " Free Software Foundation.")
+        add_package(self.prefix, "headerpkg", license_field=notice)
+        self.assertEqual(self.verdict()[0], "copyleft")
+
+    def test_gpl_free_text_beside_a_bare_classifier_is_copyleft(self):
+        add_package(self.prefix, "bareclass", license_field="GPLv3", classifiers=("OSI Approved",))
+        self.assertEqual(self.verdict()[0], "copyleft")
+
+    def test_gpl_classifier_beside_a_permissive_expression_is_copyleft(self):
+        add_package(self.prefix, "mixed", expression="MIT",
+                    classifiers=("OSI Approved :: GNU General Public License v2 (GPLv2)",))
+        self.assertEqual(self.verdict()[0], "copyleft")
+
+    def test_gpl_compatible_wording_is_not_copyleft(self):
+        add_package(self.prefix, "bsdish", license_field="BSD (GPL-compatible)",
+                    classifiers=("OSI Approved :: BSD License",))
+        self.assertEqual(self.verdict()[0], "ok")
+
+    def test_override_wins_over_copyleft_metadata(self):
+        # A human-verified dual license ("MIT OR GPL-2.0-only", distributed under MIT).
+        add_package(self.prefix, "dualpkg", expression="MIT OR GPL-2.0-only")
+        self.assertEqual(self.verdict({"dualpkg": "MIT"}), ("ok", "MIT"))
+
 
 class ForbiddenBinaryTests(unittest.TestCase):
     def test_finds_ffmpeg_and_x264_but_not_avif(self):
@@ -105,6 +139,16 @@ class ForbiddenBinaryTests(unittest.TestCase):
                 (root / "cv2/.dylibs" / name).write_bytes(b"")
             found = sorted(p.name for p in rt.forbidden_binaries(root))
             self.assertEqual(found, ["libavcodec.61.19.101.dylib", "libswscale.8.dylib", "libx264.164.dylib"])
+
+    def test_finds_standalone_ffmpeg_executables(self):
+        # imageio-ffmpeg ships an x264-enabled ffmpeg under BSD package metadata.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "imageio_ffmpeg/binaries").mkdir(parents=True)
+            for name in ("ffmpeg-macos-aarch64-v7.1", "ffprobe", "ffmpy.py"):
+                (root / "imageio_ffmpeg/binaries" / name).write_bytes(b"")
+            found = sorted(p.name for p in rt.forbidden_binaries(root))
+            self.assertEqual(found, ["ffmpeg-macos-aarch64-v7.1", "ffprobe"])
 
 
 class GuardCLITests(unittest.TestCase):
