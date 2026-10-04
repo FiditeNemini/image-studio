@@ -1,0 +1,11 @@
+# Everything the app runs on the bundled Python. After any change, re-lock:
+#   scripts/lock-python-runtime.sh
+# mflux is pinned exactly: a bump is a deliberate app change (new model families,
+# changed CLI flags) and ships with an app release.
+mflux==0.21.0
+# Local Gemma for the Scenario Generator and caption tools (Utilities/GemmaChatRunner.swift).
+mlx-lm>=0.31.3
+# Pinned, not a floor: 0.6.4 regressed gemma4_unified (see GemmaChatRunner.swift).
+mlx-vlm==0.6.3
+# One pin both sides accept: mflux needs >=5.5; mlx-lm/mlx-vlm break on 5.13.
+transformers>=5.5,<5.13

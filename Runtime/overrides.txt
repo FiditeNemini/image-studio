@@ -1,0 +1,5 @@
+# Remove opencv-python everywhere it is declared (mflux, mlx-vlm). Its wheel
+# bundles FFmpeg built with libx264, which is GPL. Nothing Image Studio runs
+# imports cv2: mflux uses it only for ControlNet/OpenPose/HED, mlx-vlm only for
+# video input. A marker that can never match drops the requirement.
+opencv-python ; sys_platform == "never"

@@ -1,0 +1,14 @@
+# Command-line tools the app runs through Resources/run_tool.py. The runtime
+# build smoke-tests each with --help, and the Swift toolchain is tested against
+# this list, so a renamed command fails a build instead of a user's job.
+mflux-generate-flux2
+mflux-generate-flux2-edit
+mflux-generate-ideogram4
+mflux-generate-krea2
+mflux-generate-z-image
+mflux-generate-z-image-turbo
+mflux-upscale-seedvr2
+mflux-save
+hf
+mlx_lm.generate
+mlx_vlm.generate
