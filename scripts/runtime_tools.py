@@ -6,6 +6,12 @@
         metadata (and no entry in FILE), or if a GPL-family native library
         (FFmpeg, x264) is anywhere under <prefix>.
 
+    runtime_tools.py acknowledgements <prefix> <out> --overrides FILE [--python-version V]
+        Write CPython's license and every package's license texts to <out>.
+
+    runtime_tools.py manifest <prefix> <lock> <out> --overrides FILE [--python-version V]
+        Write runtime-manifest.json: Python version, lock hash, package versions and licenses.
+
 Stdlib only. The runtime build runs this with the bundled interpreter; the unit
 tests run it with any python3 >= 3.10.
 """
@@ -13,7 +19,9 @@ tests run it with any python3 >= 3.10.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import platform
 import re
 import sys
 from dataclasses import dataclass
@@ -99,12 +107,64 @@ def guard(prefix: Path, overrides_file: Path) -> list[str]:
     return problems
 
 
+LICENSE_FILE = re.compile(r"^(LICEN[CS]E|COPYING|NOTICE)", re.IGNORECASE)
+
+
+def license_texts(dist_info: Path) -> list[str]:
+    """License files from a .dist-info: the PEP 639 licenses/ folder plus legacy root-level files."""
+    candidates = set()
+    licenses_dir = dist_info / "licenses"
+    if licenses_dir.is_dir():
+        candidates.update(p for p in licenses_dir.rglob("*") if p.is_file())
+    candidates.update(p for p in dist_info.iterdir() if p.is_file() and LICENSE_FILE.match(p.name))
+    return [p.read_text(encoding="utf-8", errors="replace").strip() for p in sorted(candidates)]
+
+
+def acknowledgements(prefix: Path, python_version: str, overrides: dict[str, str]) -> str:
+    rule = "-" * 72
+    parts = ["Open-source software bundled with MLXBits Image Studio", "=" * 72, ""]
+    cpython_license = next(iter(sorted(prefix.glob("lib/python3.*/LICENSE.txt"))), None)
+    parts += [f"CPython {python_version}", rule]
+    parts.append(cpython_license.read_text(encoding="utf-8", errors="replace").strip()
+                 if cpython_license else "See https://docs.python.org/3/license.html")
+    parts.append("")
+    for pkg in read_licenses(site_packages(prefix)):
+        _, license_name = classify(pkg, overrides)
+        parts += [f"{pkg.name} {pkg.version}" + (f" ({license_name})" if license_name else ""), rule]
+        texts = license_texts(pkg.dist_info)
+        parts += texts or ["No license file is shipped with this package; see its project page."]
+        parts.append("")
+    return "\n".join(parts) + "\n"
+
+
+def manifest(prefix: Path, lock: Path, python_version: str, overrides: dict[str, str]) -> dict:
+    packages = {}
+    for pkg in read_licenses(site_packages(prefix)):
+        _, license_name = classify(pkg, overrides)
+        packages[normalize(pkg.name)] = {"version": pkg.version, "license": license_name}
+    return {
+        "python": python_version,
+        "lock_sha256": hashlib.sha256(lock.read_bytes()).hexdigest(),
+        "packages": packages,
+    }
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
     p_guard = sub.add_parser("guard")
     p_guard.add_argument("prefix", type=Path)
     p_guard.add_argument("--overrides", type=Path, required=True)
+    p_ack = sub.add_parser("acknowledgements")
+    p_ack.add_argument("prefix", type=Path)
+    p_ack.add_argument("out", type=Path)
+    p_manifest = sub.add_parser("manifest")
+    p_manifest.add_argument("prefix", type=Path)
+    p_manifest.add_argument("lock", type=Path)
+    p_manifest.add_argument("out", type=Path)
+    for p in (p_ack, p_manifest):
+        p.add_argument("--overrides", type=Path, required=True)
+        p.add_argument("--python-version", default=platform.python_version())
     args = parser.parse_args(argv)
 
     if args.command == "guard":
@@ -112,6 +172,13 @@ def main(argv: list[str]) -> int:
         for line in problems:
             print(f"license guard: {line}", file=sys.stderr)
         return 1 if problems else 0
+    if args.command == "acknowledgements":
+        args.out.write_text(acknowledgements(args.prefix, args.python_version, load_overrides(args.overrides)))
+        return 0
+    if args.command == "manifest":
+        data = manifest(args.prefix, args.lock, args.python_version, load_overrides(args.overrides))
+        args.out.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")
+        return 0
     return 2
 
 

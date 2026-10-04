@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import subprocess
 import sys
@@ -132,6 +133,54 @@ class GuardCLITests(unittest.TestCase):
             self.assertIn("badpkg 1.0: copyleft license (GPL-2.0-only)", result.stderr)
             self.assertIn("mystery 1.0: no license metadata", result.stderr)
             self.assertIn("lib/libx264.164.dylib", result.stderr)
+
+
+class AcknowledgementsTests(unittest.TestCase):
+    def test_includes_cpython_and_every_package(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prefix = make_prefix(Path(tmp))
+            add_package(prefix, "alpha", "2.1", expression="MIT", license_files={"LICENSE": "MIT text for alpha"})
+            add_package(prefix, "hf_transfer", "0.1.9")
+            text = rt.acknowledgements(prefix, "3.14.7", {"hf-transfer": "Apache-2.0"})
+            self.assertIn("CPython 3.14.7", text)
+            self.assertIn("PSF LICENSE AGREEMENT FOR PYTHON", text)
+            self.assertIn("alpha 2.1 (MIT)", text)
+            self.assertIn("MIT text for alpha", text)
+            self.assertIn("hf_transfer 0.1.9 (Apache-2.0)", text)
+            self.assertIn("No license file is shipped with this package", text)
+
+    def test_reads_root_level_license_files_too(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prefix = make_prefix(Path(tmp))
+            dist = add_package(prefix, "legacy", expression="BSD-2-Clause")
+            (dist / "LICENSE.txt").write_text("BSD text for legacy")
+            self.assertEqual(rt.license_texts(dist), ["BSD text for legacy"])
+
+
+class ManifestTests(unittest.TestCase):
+    def test_records_versions_licenses_and_lock_hash(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prefix = make_prefix(Path(tmp))
+            add_package(prefix, "Alpha_Pkg", "2.1", expression="MIT")
+            lock = Path(tmp) / "requirements.lock"
+            lock.write_text("alpha-pkg==2.1\n")
+            data = rt.manifest(prefix, lock, "3.14.7", {})
+            self.assertEqual(data["python"], "3.14.7")
+            self.assertEqual(data["lock_sha256"], hashlib.sha256(b"alpha-pkg==2.1\n").hexdigest())
+            self.assertEqual(data["packages"], {"alpha-pkg": {"version": "2.1", "license": "MIT"}})
+
+    def test_cli_writes_json(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prefix = make_prefix(Path(tmp))
+            add_package(prefix, "alpha", expression="MIT")
+            lock = Path(tmp) / "requirements.lock"
+            lock.write_text("alpha==1.0\n")
+            overrides = Path(tmp) / "o.json"
+            overrides.write_text("{}")
+            out = Path(tmp) / "runtime-manifest.json"
+            subprocess.run([sys.executable, str(TOOLS), "manifest", str(prefix), str(lock), str(out),
+                            "--overrides", str(overrides), "--python-version", "3.14.7"], check=True)
+            self.assertEqual(json.loads(out.read_text())["packages"]["alpha"]["version"], "1.0")
 
 
 if __name__ == "__main__":
