@@ -134,6 +134,7 @@ Signing is cached per identity with a stamp file, so routine Debug builds don't 
 - **Both** restore or build the cached runtime.
 - **`release.yml`** signs with Developer ID before notarizing.
 - **Both re-run the smoke test** against the *signed* runtime, so hardened-runtime or library-validation failures appear before notarization or upload.
+- **The post-signing smoke test runs through the app.** The app's executable takes a hidden `--runtime-self-test` flag (added with the toolchain in milestone 4). It runs the tool and import checks as children of the real app process, prints the results, and exits non-zero on failure. The reason: in the App Store flavor, `python3.14` carries the sandbox-inherit entitlements, and a sandbox-inherit binary launched outside a sandboxed parent crashes. The DMG flavor uses the same flag for consistency.
 
 ## 3. Toolchain
 
@@ -332,7 +333,7 @@ It opens with:
 
 **CI:**
 - **Runtime job:** builds the runtime (cached), runs the license guard, and smoke-tests every tool name through `run_tool.py`.
-- **Release workflows:** both repeat the smoke test, plus `import torch`, against the signed runtime.
+- **Release workflows:** both repeat the smoke test, plus `import torch`, against the signed runtime, by running the built app with `--runtime-self-test`.
 
 **Manual checklist.** Sandboxed checks use the App Store scheme, then TestFlight.
 1. **First run:**
@@ -385,7 +386,7 @@ It opens with:
    - requires setup steps 1–7
    - proves upload validation and reserves the name before deeper work
 4. **Toolchain:**
-   - `Toolchain`, `run_tool.py`, Custom Python override, migration
+   - `Toolchain`, the Custom Python override, migration, and the `--runtime-self-test` flag (`run_tool.py` itself lands in milestone 1)
    - delete the installers
    - release a DMG on the bundled runtime, so beta testers exercise it
 5. **App Store file access:** `FileAccess`, bookmarks, `Inputs/` import, picker-only fields, the first-run models step, the `~/Pictures` default.
