@@ -64,13 +64,11 @@ protocol JobRunnerSpec {
     /// Stage-marker text inserted into the log when the first denoise step appears.
     static var encodingLabel: String { get }
 
-    /// CLI name shown in the "not found" error message.
-    static func binaryName(job: Job) -> String
-    static func binaryPath(job: Job, settings: AppSettings) -> String
+    /// The tool that generates `job`, run through ``Toolchain``.
+    static func tool(job: Job) -> PythonTool
     /// Where a one-time `mflux-save` quantization pass should write, or nil when the
     /// job loads weights directly (BF16, pre-quantized repo, or repo override).
     static func quantSaveDestination(job: Job, settings: AppSettings) -> URL?
-    static func saveBinaryPath(settings: AppSettings) -> String
     /// `--model` argument for the `mflux-save` pass.
     static func saveModelID(job: Job) -> String
     /// Optional auxiliary prompt file written before launch and deleted after the run
@@ -320,10 +318,13 @@ final class JobRunner<Spec: JobRunnerSpec> {
             return
         }
 
-        let binaryPath = Spec.binaryPath(job: job, settings: settings)
-        guard !binaryPath.isEmpty, FileManager.default.fileExists(atPath: binaryPath) else {
-            let message = "\(Spec.binaryName(job: job)) not found. Check Settings → Advanced."
-            finishJob(job, status: .failed(message), stepDir: stepDir)
+        let tool = Spec.tool(job: job)
+        let command: ToolCommand
+        do {
+            command = try settings.toolchain.command(tool)
+        } catch {
+            settings.refreshToolchain() // so the banner shows what went missing
+            finishJob(job, status: .failed(error.localizedDescription), stepDir: stepDir)
             return
         }
 
@@ -345,21 +346,27 @@ final class JobRunner<Spec: JobRunnerSpec> {
 
         // Warm-driver path: eligible jobs go to the persistent driver; any
         // startup failure falls through to the one-shot CLI below.
-        if let driver, settings.keepModelWarm,
-           let request = Spec.driverRequest(job: job, ctx: ctx, settings: settings) {
-            if await driver.ensureRunning() {
-                await runViaDriver(driver, request: request, job: job, stepDir: stepDir, timing: timing)
-                return
+        if settings.keepModelWarm {
+            if let driver, let request = Spec.driverRequest(job: job, ctx: ctx, settings: settings) {
+                if await driver.ensureRunning() {
+                    await runViaDriver(driver, request: request, job: job, stepDir: stepDir, timing: timing)
+                    return
+                }
+                job.log += "⚠️  Warm driver unavailable — falling back to one-shot CLI.\n"
+            } else {
+                // Say why, so a one-shot run with Keep model warm on isn't a mystery.
+                job.log += driver == nil
+                    ? "⚠️  No warm driver attached for \(Spec.family.rawValue) — running one-shot.\n"
+                    : "▸ This job isn't eligible for the warm driver — running one-shot.\n"
             }
-            job.log += "⚠️  Warm driver unavailable — falling back to one-shot CLI.\n"
         }
 
         let args = Spec.buildArgs(job: job, ctx: ctx, settings: settings)
-        job.log += "$ \(binaryPath) \(args.joined(separator: " "))\n\n"
+        job.log += "$ \(tool.rawValue) \(args.joined(separator: " "))\n\n"
 
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: binaryPath)
-        process.arguments = args
+        process.executableURL = command.executableURL
+        process.arguments = command.arguments + args
         process.environment = settings.buildEnvironment()
 
         currentProcess = process
@@ -622,9 +629,8 @@ final class JobRunner<Spec: JobRunnerSpec> {
     // MARK: - mflux-save for quantized weights
 
     private func runSave(job: Job, savePath: URL, settings: AppSettings) async -> SaveResult {
-        let saveBinary = Spec.saveBinaryPath(settings: settings)
-        guard !saveBinary.isEmpty, FileManager.default.fileExists(atPath: saveBinary) else {
-            job.log += "⚠️  mflux-save not found — falling back to in-memory quantization.\n"
+        guard let save = try? settings.toolchain.command(.save) else {
+            job.log += "⚠️  mflux-save unavailable — falling back to in-memory quantization.\n"
             return .success // non-fatal: generate will quantize in-memory instead
         }
         try? FileManager.default.createDirectory(at: savePath, withIntermediateDirectories: true)
@@ -633,8 +639,8 @@ final class JobRunner<Spec: JobRunnerSpec> {
 
         let args = ["--model", Spec.saveModelID(job: job), "--quantize", "\(job.quantize)", "--path", savePath.path]
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: saveBinary)
-        process.arguments = args
+        process.executableURL = save.executableURL
+        process.arguments = save.arguments + args
         process.environment = settings.buildEnvironment()
 
         currentProcess = process

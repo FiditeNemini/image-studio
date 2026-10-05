@@ -79,7 +79,21 @@ jobs:
             -project "$PROJECT" \
             -scheme "$SCHEME" \
             -destination "platform=macOS" \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO \
+            BUNDLE_PYTHON_RUNTIME=NO
+
+      - uses: astral-sh/setup-uv@v10.2.0  # setup-uv publishes no floating major tag
+
+      # Restore only, with runtime.yml's key: the runtime this release signs is one
+      # that passed there on main, or is built fresh here. Releases never write it.
+      - name: Restore Python runtime
+        uses: actions/cache/restore@v6
+        with:
+          path: build/python-runtime
+          key: python-runtime-${{ hashFiles('Runtime/**', 'scripts/build-python-runtime.sh', 'scripts/runtime_tools.py', 'Resources/run_tool.py') }}
+
+      - name: Build Python runtime (license guard + smoke test)
+        run: scripts/build-python-runtime.sh
 
       - name: Archive (Release, manual Developer ID signing)
         run: |
@@ -118,6 +132,14 @@ jobs:
             -archivePath "build/archive.xcarchive" \
             -exportPath "build/export" \
             -exportOptionsPlist "build/ExportOptions.plist"
+
+      # The runtime inside the exported app is signed with Developer ID and the
+      # hardened runtime. Prove it still imports and runs every tool before the
+      # DMG is built and notarized (spec §2).
+      - name: Self-test the signed runtime
+        run: |
+          APP="build/export/$APP_NAME.app"
+          "$APP/Contents/MacOS/$APP_NAME" --runtime-self-test
 
       - name: Create DMG
         run: |

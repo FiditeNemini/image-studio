@@ -56,7 +56,12 @@ class AppSettings {
     // MARK: - Stored
 
     private struct Stored: Codable {
+        /// Read-only legacy key: migrated into `customPython` at launch
+        /// (``ToolchainMigration``) and never written again.
         var mfluxBinaryDir: String?
+        /// DMG only: the Custom Python override (spec §3). Absent until the
+        /// first launch of 0.16.0 migrates `mfluxBinaryDir` into it.
+        var customPython: String?
         var defaultModel: FluxModelVariant?
         var defaultWidth: Int?; var defaultHeight: Int?
         var defaultLoras: [LoraEntry]?
@@ -120,7 +125,7 @@ class AppSettings {
 
         init() {}
         init(
-            mfluxBinaryDir: String, defaultModel: FluxModelVariant,
+            defaultModel: FluxModelVariant,
             defaultWidth: Int, defaultHeight: Int,
             defaultLoras: [LoraEntry],
             mlxCacheLimitGB: Double, hfHome: String, mfluxCacheDir: String,
@@ -133,7 +138,6 @@ class AppSettings {
             lastIdeogramPreset: Ideogram4Preset?, lastIdeogramWidth: Int?,
             lastIdeogramHeight: Int?, lastIdeogramQuantize: Int?
         ) {
-            self.mfluxBinaryDir = mfluxBinaryDir
             self.defaultModel = defaultModel
             self.defaultWidth = defaultWidth
             self.defaultHeight = defaultHeight
@@ -170,17 +174,27 @@ class AppSettings {
         return (try? JSONDecoder().decode(Stored.self, from: data)) ?? Stored()
     }
 
-    /// Global
-    var mfluxBinaryDir: String {
+    /// The Custom Python to start with: the saved one or, on the first launch of
+    /// 0.16.0, what the old mflux folder setting migrates to (spec §3). A dev
+    /// checkout carries over; a uv-managed install (or none) means the bundled runtime.
+    private static func customPython(migrating s: Stored) -> String {
+        s.customPython ?? ToolchainMigration.customPython(fromLegacyBinaryDir: s.mfluxBinaryDir ?? "") ?? ""
+    }
+
+    /// Global, DMG only: an interpreter that runs mflux and the warm driver in
+    /// place of the bundled runtime, such as a dev checkout's `.venv/bin/python`.
+    var customPythonPath: String {
         didSet {
-            refreshAvailableModels()
+            refreshToolchain()
             save()
         }
     }
 
-    /// Models the mflux install at ``mfluxBinaryDir`` ships a generation CLI for.
-    /// Cached rather than probed per view update — recomputed when the binary
-    /// directory changes and by ``refreshAvailableModels()`` after an install.
+    /// How Python tools run. Rebuilt by ``refreshToolchain()``.
+    private(set) var toolchain = Toolchain(resourcesURL: nil, customPython: "")
+
+    /// Models the current toolchain ships a generation tool for. Cached rather
+    /// than probed per view update; recomputed by ``refreshToolchain()``.
     private(set) var availableModels: [FluxModelVariant] = []
 
     /// The active profile's library folder. Read-only here: the profile registry
@@ -589,7 +603,7 @@ class AppSettings {
         let s = Self.loadStored()
         let model = s.defaultModel ?? .flux2Klein9B
 
-        mfluxBinaryDir = s.mfluxBinaryDir ?? BinaryDetector.detectBinaryDir(for: "mflux-generate-flux2")
+        customPythonPath = Self.customPython(migrating: s)
         // Per-profile fields start empty; ProfileStore activates a profile right
         // after init, which loads them from that profile's profile.json.
         outputDir = ""
@@ -683,24 +697,32 @@ class AppSettings {
         customTemplates = []
         activeTemplateIDs = []
         galleryCollapsedBoards = []
-        refreshAvailableModels()
+        refreshToolchain()
     }
 
     // MARK: - Model availability
 
-    /// Re-probes which families the current mflux install can run. Call after an
-    /// install or update; the ``mfluxBinaryDir`` setter does it automatically.
-    func refreshAvailableModels() {
-        availableModels = FluxModelVariant.customTargets(binaryDir: mfluxBinaryDir)
+    /// Rebuilds the toolchain from ``customPythonPath``, which the App Store build
+    /// ignores (spec §3), and re-checks which families it can run.
+    func refreshToolchain() {
+        toolchain = Toolchain(
+            resourcesURL: Bundle.main.resourceURL,
+            customPython: BuildFlavor.isAppStore ? "" : customPythonPath
+        )
+        refreshAvailableModels()
     }
 
-    /// Whether this mflux install ships `model`'s generation CLI. `custom` has no
-    /// CLI of its own — its target is what gets checked.
+    /// Re-checks which families the current toolchain can run.
+    func refreshAvailableModels() {
+        availableModels = FluxModelVariant.customTargets(toolchain: toolchain)
+    }
+
+    /// Whether the toolchain can run `model`'s generation tool. `custom` has no
+    /// tool of its own — its target is what gets checked.
     ///
-    /// An empty ``availableModels`` means nothing was detected at all (mflux not
-    /// installed yet, or installed somewhere unexpected). Gating on that would
-    /// leave the picker with nothing selectable, so nothing is gated until at
-    /// least one CLI is found.
+    /// An empty ``availableModels`` means nothing was detected at all (no runtime
+    /// and no usable Custom Python). Gating on that would leave the picker with
+    /// nothing selectable, so nothing is gated until at least one tool is found.
     func supportsModel(_ model: FluxModelVariant) -> Bool {
         model == .custom || availableModels.isEmpty || availableModels.contains(model)
     }
@@ -833,7 +855,6 @@ class AppSettings {
 
     private func saveNow() {
         var s = Stored(
-            mfluxBinaryDir: mfluxBinaryDir,
             defaultModel: defaultModel,
             defaultWidth: defaultWidth, defaultHeight: defaultHeight,
             defaultLoras: legacyDefaultLoras,
@@ -852,6 +873,7 @@ class AppSettings {
             lastIdeogramHeight: lastIdeogramHeight,
             lastIdeogramQuantize: lastIdeogramQuantize
         )
+        s.customPython = customPythonPath
         s.targetMegapixels = targetMegapixels
         s.rapidTargetMegapixels = rapidTargetMegapixels
         s.ideogram4LowRam = ideogram4LowRam
@@ -907,38 +929,6 @@ class AppSettings {
         return ProfileRules.isOnExpectedVolume(path: root.path, volumePath: volume?.path ?? "/")
     }
 
-    func mfluxBinaryPath() -> String {
-        BinaryDetector.mfluxGenerateFlux2(in: mfluxBinaryDir)
-    }
-
-    func mfluxEditBinaryPath() -> String {
-        BinaryDetector.mfluxGenerateFlux2Edit(in: mfluxBinaryDir)
-    }
-
-    func mfluxIdeogram4BinaryPath() -> String {
-        BinaryDetector.mfluxGenerateIdeogram4(in: mfluxBinaryDir)
-    }
-
-    func mfluxKrea2BinaryPath() -> String {
-        BinaryDetector.mfluxGenerateKrea2(in: mfluxBinaryDir)
-    }
-
-    /// Resolves the Z-Image CLI for the given variant: the Turbo shim for the
-    /// distilled variant, the base shim otherwise.
-    func mfluxZImageBinaryPath(turbo: Bool) -> String {
-        turbo
-            ? BinaryDetector.mfluxGenerateZImageTurbo(in: mfluxBinaryDir)
-            : BinaryDetector.mfluxGenerateZImage(in: mfluxBinaryDir)
-    }
-
-    func mfluxSeedVR2BinaryPath() -> String {
-        BinaryDetector.mfluxUpscaleSeedVR2(in: mfluxBinaryDir)
-    }
-
-    func mlxLmBinaryPath() -> String {
-        BinaryDetector.mlxLmGenerate(in: mfluxBinaryDir)
-    }
-
     /// Returns true when Ideogram 4 model weights are already cached locally.
     func ideogram4ModelOnDisk(quantize: Int) -> Bool {
         let hfBase = hfHubDir
@@ -964,7 +954,6 @@ class AppSettings {
         let home = NSHomeDirectory()
         var env = ProcessInfo.processInfo.environment
         env["PATH"] = "\(home)/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
-        env["PYTHONUNBUFFERED"] = "1"
         if !hfHome.isEmpty {
             env["HF_HOME"] = hfHome
         }
@@ -977,6 +966,6 @@ class AppSettings {
         if !hfToken.isEmpty {
             env["HF_TOKEN"] = hfToken
         }
-        return env
+        return Toolchain.environment(base: env, cachesURL: Toolchain.cachesURL)
     }
 }

@@ -16,8 +16,7 @@ final class UpdateChecker {
     /// leading "v" and any non-numeric suffix on each component (e.g. "1.2.0-rc").
     /// Returns true when `lhs` is a strictly newer release than `rhs`.
     ///
-    /// Nonisolated: a pure comparison, also used off the main actor by
-    /// ``MfluxInstaller/satisfiesMinimum(_:)`` to gate the mflux version floor.
+    /// Nonisolated: a pure comparison, callable from any actor.
     nonisolated static func compare(_ lhs: String, isNewerThan rhs: String) -> Bool {
         let a = components(lhs)
         let b = components(rhs)
@@ -42,6 +41,9 @@ final class UpdateChecker {
 
     /// The bundled app version (CFBundleShortVersionString), e.g. "0.6.4".
     let currentVersion: String
+    /// False in the App Store build: App Store apps update through the store
+    /// (spec §3), so no GitHub check, badge or About status.
+    let isEnabled: Bool
 
     private(set) var latestVersion: String?
     private(set) var releaseURL: URL?
@@ -54,14 +56,15 @@ final class UpdateChecker {
         return Self.compare(latestVersion, isNewerThan: currentVersion)
     }
 
-    init() {
+    init(isEnabled: Bool = !BuildFlavor.isAppStore) {
         currentVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"
+        self.isEnabled = isEnabled
     }
 
     /// Fetches the latest GitHub release and records its version + page URL.
     /// Concurrent calls are coalesced; failures surface via `lastError`.
     func check() async {
-        guard !isChecking else { return }
+        guard isEnabled, !isChecking else { return }
         isChecking = true
         lastError = nil
         defer { isChecking = false }
