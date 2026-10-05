@@ -17,6 +17,49 @@ final class LoraLibraryStore {
     private static let fileURL: URL =
         AppSettings.appSupportURL.appendingPathComponent("lora-library.json")
 
+    /// `library` and `stacks` with entry `id` moved to `newPath` (Locate…), and
+    /// every other entry and stack LoRA that used its old path following it.
+    static func relocating(
+        _ id: UUID, to newPath: String, library: [LibraryLora], stacks: [LoraStack]
+    ) -> (library: [LibraryLora], stacks: [LoraStack]) {
+        guard let oldPath = library.first(where: { $0.id == id })?.path else { return (library, stacks) }
+        var library = library
+        for i in library.indices where library[i].path == oldPath {
+            library[i].path = newPath
+        }
+        let stacks = stacks.map { stack in
+            var stack = stack
+            for i in stack.loras.indices where stack.loras[i].path == oldPath {
+                stack.loras[i].path = newPath
+            }
+            return stack
+        }
+        return (library, stacks)
+    }
+
+    /// This generation's Flux LoRAs after the library's defaults change from
+    /// `old` to `new`: a default located again (Locate…) moves to its new
+    /// file, notes follow the library, and new defaults are added.
+    static func followingDefaults(_ loras: [LoraEntry], from old: [LoraEntry], to new: [LoraEntry]) -> [LoraEntry] {
+        let oldPaths = Dictionary(old.map { ($0.id, $0.path) }) { first, _ in first }
+        let moves = new.compactMap { entry in oldPaths[entry.id].flatMap { $0 == entry.path ? nil : ($0, entry.path) } }
+        let moved = Dictionary(moves) { first, _ in first }
+        let notes = new.compactMap { $0.notes.isEmpty ? nil : ($0.path, $0.notes) }
+        let notesByPath = Dictionary(notes) { first, _ in first }
+        var loras = loras
+        for i in loras.indices {
+            loras[i].path = moved[loras[i].path] ?? loras[i].path
+            if let note = notesByPath[loras[i].path] {
+                loras[i].notes = note
+            }
+        }
+        let currentPaths = Set(loras.map(\.path))
+        for entry in new where !currentPaths.contains(entry.path) && entry.modelFamily == .flux {
+            loras.append(entry)
+        }
+        return loras
+    }
+
     var library: [LibraryLora] {
         didSet { save() }
     }
@@ -132,6 +175,12 @@ final class LoraLibraryStore {
         } else {
             library.append(entry)
         }
+    }
+
+    func relocate(_ id: UUID, to newPath: String) {
+        let next = Self.relocating(id, to: newPath, library: library, stacks: stacks)
+        library = next.library
+        stacks = next.stacks
     }
 
     func deleteLibrary(id: UUID) {

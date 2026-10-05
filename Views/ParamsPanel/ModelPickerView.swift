@@ -109,7 +109,7 @@ struct ModelPickerView: View {
                 }
 
                 if settingsOverride == nil, model != .custom,
-                   model.isOnDisk(quantize: quantize, savedIn: settings.effectiveMfluxCacheDir) {
+                   model.isOnDisk(quantize: quantize, savedIn: settings.effectiveMfluxCacheDir, hubDir: settings.hfHubDir) {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(.green)
                         .font(.caption)
@@ -171,11 +171,25 @@ struct ModelPickerView: View {
     }
 
     private var customRepoField: some View {
-        TextField("org/repo or /path/to/model", text: $customModelRepo)
-            .textFieldStyle(.roundedBorder)
-            .font(.caption)
-            .frame(width: 220)
-            .accessibilityLabel("Custom model repo or path")
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 4) {
+                TextField("org/repo or /path/to/model", text: $customModelRepo)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.caption)
+                    .frame(width: 196)
+                    .accessibilityLabel("Custom model repo or path")
+                Button {
+                    chooseCustomFolder()
+                } label: {
+                    Image(systemName: "folder").font(.caption)
+                }
+                .buttonStyle(.iconButtonCompact)
+                .frame(width: 20)
+                .help("Choose a local model folder")
+                .accessibilityLabel("Choose a local model folder")
+            }
+            GrantHint(path: customModelRepo, remedy: "Choose it with the folder button to give access.")
+        }
     }
 
     private var customTargetRow: some View {
@@ -223,7 +237,7 @@ struct ModelPickerView: View {
         case ..<0.9: .orange
         default: .red
         }
-        let onDisk = model.isOnDisk(quantize: quantize, savedIn: settings.effectiveMfluxCacheDir)
+        let onDisk = model.isOnDisk(quantize: quantize, savedIn: settings.effectiveMfluxCacheDir, hubDir: settings.hfHubDir)
         // The disk pill is a binary download-state signal — green when cached,
         // neutral "download" otherwise. Size-based warning colors live on the RAM
         // pill only, so a not-yet-downloaded model never looks like a warning.
@@ -254,6 +268,12 @@ struct ModelPickerView: View {
     /// than being silently dropped (reads as a bug) or left selectable (fails at
     /// spawn time). mflux adds CLIs between releases and the app installs it
     /// unpinned, so this varies per install.
+    private func chooseCustomFolder() {
+        if let path = GrantingPanel.chooseFolder(title: "Choose Model Folder", access: settings.fileAccess) {
+            customModelRepo = path
+        }
+    }
+
     private func modelPickerRow(_ v: FluxModelVariant) -> some View {
         let available = settings.supportsModel(v)
         return Text(available || model == v ? v.displayName : "\(v.displayName) — not in this mflux install")
@@ -280,7 +300,7 @@ struct ModelPickerView: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
             .background(estimate.diskColor.opacity(0.12), in: Capsule())
-        if estimate.onDisk, let diskURL = model.onDiskURL(quantize: quantize) {
+        if estimate.onDisk, let diskURL = model.onDiskURL(quantize: quantize, hubDir: settings.hfHubDir) {
             InfoButton(
                 title: estimate.diskInfoTitle,
                 description: estimate.diskInfoBody,

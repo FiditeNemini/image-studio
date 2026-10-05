@@ -21,6 +21,15 @@ enum FluxRunnerSpec: JobRunnerSpec {
         job.isEditMode ? .flux2Edit : .flux2
     }
 
+    /// Exactly what the run reads: enabled Flux LoRAs, the custom folder only
+    /// for the custom model, and the images of the job's mode.
+    static func accessPaths(job: FluxJob) -> [String] {
+        let loras = job.loras.filter { $0.enabled && $0.isValid && $0.modelFamily == .flux }.map(\.path)
+        let model = job.model == .custom ? [job.customModelRepo] : []
+        let images = job.isEditMode ? job.editImagePaths : [job.imagePath]
+        return (loras + model + images).filter(FileAccessPath.isLocal)
+    }
+
     /// For quantized non-custom models without a published pre-quantized repo, a local
     /// saved copy lets every subsequent load skip in-memory quantization.
     static func quantSaveDestination(job: FluxJob, settings: AppSettings) -> URL? {

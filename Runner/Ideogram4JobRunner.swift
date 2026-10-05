@@ -21,6 +21,12 @@ enum Ideogram4RunnerSpec: JobRunnerSpec {
         .ideogram4
     }
 
+    /// Exactly what the run reads: enabled LoRAs of this family and the model folder.
+    static func accessPaths(job: Ideogram4Job) -> [String] {
+        let loras = job.loras.filter { $0.enabled && $0.isValid && $0.modelFamily == .ideogram4 }.map(\.path)
+        return (loras + [job.customModelRepo]).filter(FileAccessPath.isLocal)
+    }
+
     /// Q8/Q4 load pre-quantized MLX weights directly from the published repo —
     /// no one-time mflux-save quantization pass needed for them, nor for a
     /// custom/overridden source that names specific weights.

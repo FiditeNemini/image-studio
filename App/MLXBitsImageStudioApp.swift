@@ -20,6 +20,7 @@ struct MLXBitsImageStudioApp: App {
     @State private var loraLibrary = LoraLibraryStore()
     @State private var updateChecker = UpdateChecker()
     @State private var backendModels = BackendModelStore()
+    @State private var modelDownloads = ModelDownloadStore()
 
     var body: some Scene {
         WindowGroup {
@@ -43,6 +44,7 @@ struct MLXBitsImageStudioApp: App {
                 .environment(loraLibrary)
                 .environment(updateChecker)
                 .environment(backendModels)
+                .environment(modelDownloads)
                 .frame(minWidth: 900, minHeight: 600)
                 // Launch-time update check; drives the toolbar badge when a newer
                 // GitHub release exists. Coalesced so multiple windows check once.
@@ -103,6 +105,9 @@ struct MLXBitsImageStudioApp: App {
         if testHost {
             settings.suspendPersistence()
         }
+        // The models folder and other folder settings stay reachable all
+        // session (spec §4). didSet doesn't run for init's own assignments.
+        settings.refreshSessionAccess()
         let store = JobStore()
         let gallery = GalleryStore()
         let ideogram4Store = Ideogram4JobStore()
