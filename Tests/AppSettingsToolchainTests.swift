@@ -23,4 +23,15 @@ struct AppSettingsToolchainTests {
         #expect(env["PYTHONDONTWRITEBYTECODE"] == "1")
         #expect(env["MPLCONFIGDIR"]?.hasSuffix("/matplotlib") == true)
     }
+
+    /// Jobs and downloads get the Toolchain's privacy settings too
+    /// (ToolchainTests covers the full set).
+    @Test func childProcessesSendNoTelemetry() {
+        let settings = AppSettings()
+        settings.suspendPersistence()
+        let env = settings.buildEnvironment()
+        #expect(env["HF_HUB_DISABLE_TELEMETRY"] == "1")
+        #expect(env["DO_NOT_TRACK"] == "1")
+        #expect(env["HF_HUB_DISABLE_UPDATE_CHECK"] == "1")
+    }
 }
