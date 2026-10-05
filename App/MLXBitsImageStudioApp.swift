@@ -1,6 +1,17 @@
 import SwiftUI
 
 struct MLXBitsImageStudioApp: App {
+    /// The support nudge's count: the images every runner saves (spec §5).
+    private static func makeSupport(testHost: Bool, runners: [any LandedImagesReporting]) -> SupportStore {
+        let support = SupportStore(
+            defaults: testHost ? UserDefaults(suiteName: "MLXBitsImageStudio.TestHost") ?? .standard : .standard
+        )
+        for runner in runners {
+            runner.onImagesLanded = { support.recordImages($0) }
+        }
+        return support
+    }
+
     @State private var settings: AppSettings
     @State private var profiles: ProfileStore
     @State private var store: JobStore
@@ -14,13 +25,15 @@ struct MLXBitsImageStudioApp: App {
     @State private var zimageStore: ZImageJobStore
     @State private var zimageRunner: ZImageJobRunner
     @State private var seedVR2Store: SeedVR2JobStore
-    @State private var seedVR2Runner = SeedVR2JobRunner()
+    @State private var seedVR2Runner: SeedVR2JobRunner
     @State private var coordinator: GenerationCoordinator
     @State private var timing = TimingStore()
     @State private var loraLibrary = LoraLibraryStore()
     @State private var updateChecker = UpdateChecker()
     @State private var backendModels = BackendModelStore()
     @State private var modelDownloads = ModelDownloadStore()
+    @State private var support: SupportStore
+    @State private var tipJar: TipJarStore
 
     var body: some Scene {
         WindowGroup {
@@ -45,6 +58,7 @@ struct MLXBitsImageStudioApp: App {
                 .environment(updateChecker)
                 .environment(backendModels)
                 .environment(modelDownloads)
+                .environment(support)
                 .frame(minWidth: 900, minHeight: 600)
                 // Launch-time update check; drives the toolbar badge when a newer
                 // GitHub release exists. Coalesced so multiple windows check once.
@@ -79,7 +93,16 @@ struct MLXBitsImageStudioApp: App {
                 .environment(gallery)
                 .environment(driverController)
                 .environment(loraLibrary)
+                .environment(support)
         }
+
+        Window("Support MLXBits Image Studio", id: SupportView.windowID) {
+            SupportView()
+                .environment(support)
+                .environment(tipJar)
+        }
+        .windowResizability(.contentSize)
+        .defaultPosition(.center)
     }
 
     /// The main window's content for the current profile phase. ContentView is
@@ -135,6 +158,7 @@ struct MLXBitsImageStudioApp: App {
         let ideogram4Runner = Ideogram4JobRunner()
         let krea2Runner = Krea2JobRunner()
         let zimageRunner = ZImageJobRunner()
+        let seedVR2Runner = SeedVR2JobRunner()
         runner.driver = driver
         ideogram4Runner.driver = driver
         krea2Runner.driver = driver
@@ -153,6 +177,18 @@ struct MLXBitsImageStudioApp: App {
         _ideogram4Runner = State(initialValue: ideogram4Runner)
         _krea2Runner = State(initialValue: krea2Runner)
         _zimageRunner = State(initialValue: zimageRunner)
+        _seedVR2Runner = State(initialValue: seedVR2Runner)
+        let support = Self.makeSupport(
+            testHost: testHost, runners: [runner, ideogram4Runner, krea2Runner, zimageRunner, seedVR2Runner]
+        )
+        _support = State(initialValue: support)
+        let tipJar = TipJarStore(storefront: StoreKitStorefront()) { support.noteTipped() }
+        // Tips interrupted last launch, or approved later, are finished as
+        // soon as the app starts (spec §5).
+        if BuildFlavor.isAppStore, !testHost {
+            tipJar.startFinishingTransactions()
+        }
+        _tipJar = State(initialValue: tipJar)
         // Fold any pre-library default-LoRA list into LibraryLora.isDefault flags.
         loraLibrary.migrateLegacyDefaults(from: settings)
     }
@@ -169,6 +205,9 @@ struct AboutCommands: Commands {
         CommandGroup(replacing: .appInfo) {
             Button("About MLXBits Image Studio") {
                 openWindow(id: Self.windowID)
+            }
+            Button("Support MLXBits Image Studio…") {
+                openWindow(id: SupportView.windowID)
             }
         }
     }

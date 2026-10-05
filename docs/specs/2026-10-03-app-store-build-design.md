@@ -233,12 +233,12 @@ All of this lives behind one `FileAccess` service. The DMG implementation passes
 
 ## 5. Support: tip jar and donation links
 
-**Shared Support sheet.** It opens from:
+**Shared Support window.** It opens from:
 - the app menu: "Support MLXBits Image Studio…", right after About
 - a Support section in Settings
 - the nudge below
 
-It opens with:
+It's a small window like About, not a sheet: Settings is a separate window, and a sheet on the main window would open behind it (decided in milestone 6). It opens with:
 
 > Every feature is free. Tips don't unlock anything; they just help keep the project going.
 
@@ -247,8 +247,9 @@ It opens with:
 - **What:** a dismissable card under the top bar, styled like the existing banners:
   > Image Studio is free and built in spare time. If it's useful to you, a tip helps cover the costs to build and maintain it. We appreciate anything you can provide.
 - **Buttons:** **Leave a Tip…** and **No Thanks**. Either one retires the nudge for good.
-- **Never shown** if the Support sheet was already opened or a tip was made.
-- A debug-only override lowers the threshold for testing.
+- **Never shown** if the Support window was already opened or a tip was made.
+- A debug-only override lowers the threshold for testing: the launch argument `-supportNudgeThreshold <n>`.
+- Counting starts with the build that adds it; past queue history isn't counted (decided in milestone 6).
 
 **App Store build: StoreKit 2.**
 - **Products:** three consumables:
@@ -261,6 +262,8 @@ It opens with:
 - **No Restore button:** consumables need none.
 - **Stored state:** only a local "has tipped" flag, which suppresses the nudge.
 - **Local testing:** a `.storekit` configuration file in the project.
+- **Repeat tips:** consumables, so a person can tip again, the same size or another; the buttons stay enabled after a thank-you.
+- **Quiet outcomes:** cancelled shows nothing; pending and failed show a one-line caption in the window.
 - **No external links:** the App Store build never shows Ko-fi or GitHub links. Outside the US storefront that breaks Apple's rule against steering users to other payment methods.
 
 **DMG build:**
@@ -279,7 +282,7 @@ It opens with:
    - macOS app, name "MLXBits Image Studio". Do this early: it reserves the name.
    - Category Graphics & Design, price Free.
    - Available everywhere except China mainland, where generative-AI apps need a government license.
-5. Create the three consumable **in-app purchases**, each with a description and a review screenshot of the Support sheet. The first in-app purchases must be submitted together with an app version.
+5. Create the three consumable **in-app purchases**, each with a description and a review screenshot of the Support window. The first in-app purchases must be submitted together with an app version.
 6. Create an **App Store Connect API key** (App Manager role).
 7. Add **repo secrets**:
    - `APPSTORE_DIST_CERT_P12_BASE64` / `_PASSWORD`
@@ -334,8 +337,11 @@ It opens with:
   - the in-library / outside-library decision and the copy into `Inputs/`
   - removing a profile removes its `Inputs/`
 - **Grant store:** the deepest covering grant wins; a sibling folder sharing a prefix isn't covered; a moved folder isn't followed; a stale bookmark is re-created.
-- **Tip jar:** StoreKitTest with the `.storekit` file: success, cancelled, pending, and finishing an interrupted transaction at launch.
-- **Nudge rule** (a pure function): threshold reached, dismissed, tipped, sheet opened.
+- **Tip jar:**
+  - against a fake storefront: success, cancelled, pending, failed, repeat tips, a double click, and a failed product load;
+  - StoreKitTest with the `.storekit` file: loading the three tips, and finishing an interrupted transaction.
+  - No unit test calls `Product.purchase()`: in the hosted test run it reaches the real App Store and shows an Apple Account sign-in (found in milestone 6). The real purchase is checked by hand in the App Store scheme with `Tips.storekit`.
+- **Nudge rule** (a pure function): threshold reached, dismissed, tipped, window opened.
 
 **CI:**
 - **Runtime job:** builds the runtime (cached), runs the license guard, and smoke-tests every tool name through `run_tool.py`.
@@ -396,7 +402,7 @@ It opens with:
    - delete the installers
    - release a DMG on the bundled runtime, so beta testers exercise it
 5. **App Store file access:** `FileAccess`, bookmarks, `Inputs/` import, picker-only fields, the first-run models step, the `~/Pictures` default.
-6. **Support:** Support sheet, nudge, StoreKit tip jar, Ko-fi button (DMG), hidden GitHub button.
+6. **Support:** Support window, nudge, StoreKit tip jar, Ko-fi button (DMG), hidden GitHub button.
 7. **Store release:**
    - `appstore.yml`, Info.plist keys, `PRIVACY.md`
    - reviewer notes and listing assets
