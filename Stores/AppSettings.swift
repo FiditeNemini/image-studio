@@ -409,6 +409,12 @@ class AppSettings {
         didSet { save() }
     }
 
+    /// The ComfyUI server in use: the trimmed ``comfyURL`` while at least one family routes to it, else `nil`.
+    var activeComfyURL: String? {
+        let url = comfyURL.trimmed()
+        return url.isEmpty || !comfyBackendEnabled.values.contains(true) ? nil : url
+    }
+
     /// Last-used Z-Image form, restored on next launch.
     var lastZImage: ZImageFormState? {
         didSet { saveProfile() }
