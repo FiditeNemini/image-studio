@@ -343,6 +343,19 @@ final class JobRunner<Spec: JobRunnerSpec> {
             finishJob(job, status: .failed(error.localizedDescription), stepDir: stepDir)
             return
         }
+        // A Custom Python has only the launchers its mflux installed. Edit mode and
+        // SeedVR2 aren't gated by availableModels, so say which one is missing here
+        // rather than let run_tool exit 127 with "no installed tool".
+        guard settings.toolchain.hasTool(tool) else {
+            let message = "The Custom Python's mflux has no \(tool.rawValue). "
+                + "Update mflux there, or use the bundled Python (Settings → Advanced)."
+            job.log += "⚠️  \(message)\n"
+            finishJob(job, status: .failed(message), stepDir: stepDir)
+            return
+        }
+        if command.executable != settings.toolchain.bundledPython {
+            job.log += "▸ Python: \(command.executable)\n"
+        }
 
         // One-time mflux-save quantization pass, so every subsequent load skips
         // in-memory quantization. The spec decides whether the job needs it.
@@ -383,7 +396,7 @@ final class JobRunner<Spec: JobRunnerSpec> {
         let process = Process()
         process.executableURL = command.executableURL
         process.arguments = command.arguments + args
-        process.environment = settings.buildEnvironment()
+        process.environment = settings.buildEnvironment(interpreter: command.executable)
 
         currentProcess = process
         let stream = RunnerSupport.outputStream(for: process)
@@ -670,7 +683,8 @@ final class JobRunner<Spec: JobRunnerSpec> {
     // MARK: - mflux-save for quantized weights
 
     private func runSave(job: Job, savePath: URL, settings: AppSettings) async -> SaveResult {
-        guard let save = try? settings.toolchain.command(.save) else {
+        // A Custom Python may lack the mflux-save launcher; quantize in memory instead.
+        guard settings.toolchain.hasTool(.save), let save = try? settings.toolchain.command(.save) else {
             job.log += "⚠️  mflux-save unavailable — falling back to in-memory quantization.\n"
             return .success // non-fatal: generate will quantize in-memory instead
         }
@@ -682,7 +696,7 @@ final class JobRunner<Spec: JobRunnerSpec> {
         let process = Process()
         process.executableURL = save.executableURL
         process.arguments = save.arguments + args
-        process.environment = settings.buildEnvironment()
+        process.environment = settings.buildEnvironment(interpreter: save.executable)
 
         currentProcess = process
         let stream = RunnerSupport.outputStream(for: process)
